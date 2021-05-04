@@ -152,7 +152,9 @@ The signiture of callback function is:
 ```
 
 ## Performance
-Benchmark is done in terms of both front-end latency and throughput, with comparison to Nanolog and spdlog basic_logger_st. Test log messages use  [NanoLog benchmark Log-Messages-Map](https://github.com/PlatformLab/NanoLog#Log-Messages-Map), and header pattern uses spdlog default pattern(e.g. "[2021-05-04 10:36:38.098] [spdlog] [info] [bench.cc:111] "). Check [bench.cc](https://github.com/MengRao/fmtlog/blob/main/bench/bench.cc) for details, the results on a linux server with "Intel(R) Xeon(R) Gold 6144 CPU @ 3.50GHz" is:
+Benchmark is done in terms of both front-end latency and throughput, with comparisons to Nanolog and spdlog basic_logger_st. Test log messages use  [NanoLog benchmark Log-Messages-Map](https://github.com/PlatformLab/NanoLog#Log-Messages-Map), and header pattern uses spdlog default pattern(e.g. "[2021-05-04 10:36:38.098] [spdlog] [info] [bench.cc:111] "), check [bench.cc](https://github.com/MengRao/fmtlog/blob/main/bench/bench.cc) for details. 
+
+The results on a linux server with "Intel(R) Xeon(R) Gold 6144 CPU @ 3.50GHz" is:
 | Message | fmtlog | Nanolog | spdlog |
 |---------|:--------:|:--------:|:--------:|
 |staticString |6.4 ns, 7.08 M/s|6.5 ns, 33.10 M/s|156.4 ns, 6.37 M/s|
