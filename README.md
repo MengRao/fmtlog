@@ -2,13 +2,12 @@
 fmtlog is an asynchronous logging library using [fmt](https://github.com/fmtlib/fmt) library format. It's extremely performant with runtime latency lower than [NanoLog](https://github.com/PlatformLab/NanoLog) and throughput higher than [spdlog](https://github.com/gabime/spdlog).
 
 ## Features
-* Very fast
+* Faster (see [Performance](https://github.com/MengRao/fmtlog#Performance) below)
 * Headers only or compiled
 * Feature rich formatting on top of excellent fmt library.
-* Asynchronous logging with multithread support and can also be used synchronously.
+* Asynchronous multi-threaded logging and can also be used synchronously in single thread.
 * Custom formatting
 * Custom handling - user can set a callback function to handle log msgs in addition to writing into file.
-* Custom thread name
 * Log filtering - log levels can be modified in runtime as well as in compile time.
 * Log frequency limitation - specific logs can be set a minimum logging interval.
 
@@ -64,6 +63,9 @@ logi("Hello, {name}! The answer is {number}. Goodbye, {name}.", "name"_a = "Worl
 
 std::vector<int> v = {1, 2, 3};
 logi("ranges: {}", v);
+
+logi("std::move can be used for objects with non-trivial destructors: {}", std::move(v));
+assert(v.size() == 0);
 
 std::tuple<int, char> t = {1, 'a'};
 logi("tuples: {}", fmt::join(t, ", "));
@@ -121,4 +123,40 @@ Log header pattern can also be customized with `fmtlog::setHeaderPattern()` and 
 
 Note that using concatenated named args is more efficient than seperated ones, e.g. `{YmdHMS}` is faster than `{Y}-{m}-{d} {H}:{M}:{S}`.
 
-## To be continued
+## Output
+By default, fmtlog output to stdout(in `fmtlog::poll()`). Normally users want to write to a log file instead, this is accomplished by `fmtlog::setLogFile(filename)`. For performance, fmtlog internally buffer data and under certain conditions will the buffer be flushed into underlying file. The flush conditions are:
+* The underlying FILE* is not managed by fmtlog, then fmtlog will not buffer at all. For example, the default stdout FILE* will not be buffered. User can also pass an existing FILE* and indicate whether fmtlog should manage it by `fmtlog::setLogFile(fp, manageFp)`, e.g. `fmtlog::setLogFile(stderr, false)`, then fmtlog will log into stderr without buffering.
+* The buffer size is larger then 8 KB.
+* The oldest data in the buffer has passed a specified duration. The duration is by default 3 seconds, and can be set by `fmtlog::setFlushDelay(ns)`.
+* The new log has at least a specified flush log level. The default flush log level can't be reached by any log, but it can be set by `fmtlog::flushOn(logLevel)`.
+* User can actively ask fmtlog to flush by `fmtlog::poll(true)`.
+Optionally, user can ask fmtlog to close the log file by `fmtlog::closeLogFile()`, and subsequent log msgs will not be output.
+In addition to writing to a FILE*, user can register a callback function to handle log msgs by `fmtlog::setLogCB(cb, minCBLogLevel)`. This can be useful in circumstances where warning/error msgs need to be published out in real time for alerting purposes. Log callback will not be buffered as log file, and can be triggered even when file is closed.
+The signiture of callback function is:
+```c++
+  // callback signature user can register
+  // ns: nanosecond timestamp
+  // level: logLevel
+  // location: full file path with line num, e.g: /home/raomeng/fmtlog/fmtlog.h:45
+  // basePos: file base index in the location
+  // threadName: thread id or the name user set with setThreadName
+  // msg: full log msg with header
+  // bodyPos: log body index in the msg
+  typedef void (*LogCBFn)(uint64_t ns, LogLevel level, fmt::string_view location, size_t basePos,
+                          fmt::string_view threadName, fmt::string_view msg, size_t bodyPos);
+```
+
+## Performance
+Benchmark is done in terms of both average front-end latency and formatted throughput, with comparison to Nanolog and spdlog basic_logger_st. Test log messages use  [NanoLog benchmark Log-Messages-Map](https://github.com/PlatformLab/NanoLog#Log-Messages-Map), and header pattern uses spdlog default pattern(example: "[2021-05-04 10:36:38.098] [spdlog] [info] [bench.cc:111] "). Check [bench.cc](https://github.com/MengRao/fmtlog/blob/main/bench/bench.cc) for details, the results on a linux server with "Intel(R) Xeon(R) Gold 6144 CPU @ 3.50GHz" is:
+| Message | fmtlog | Nanolog | spdlog |
+|---------|:--------:|:--------:|:--------:|
+|staticString |6.4 ns, 7.08 M/s|6.5 ns, 33.10 M/s|156.4 ns, 6.37 M/s|
+|stringConcat |6.4 ns, 6.05 M/s|7.5 ns, 14.20 M/s|209.4 ns, 4.77 M/s|
+|singleInteger |6.3 ns, 6.22 M/s|6.5 ns, 50.29 M/s|202.3 ns, 4.94 M/s|
+|twoIntegers |6.4 ns, 4.87 M/s|6.6 ns, 39.25 M/s|257.2 ns, 3.89 M/s|
+|singleDouble |6.2 ns, 5.37 M/s|6.5 ns, 39.62 M/s|225.0 ns, 4.44 M/s|
+|complexFormat |6.4 ns, 2.95 M/s|6.7 ns, 24.30 M/s|390.9 ns, 2.56 M/s|
+
+Note that the throughput of Nanolog is not comparable here because it outputs to binary log file instead of human-readable text format, for example, it saves an int64 timestamp instead of a long formatted date time string.
+
+To be continued...
