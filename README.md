@@ -19,9 +19,12 @@ Just copy `fmtlog.h` and `fmtlog-inl.h` to your project, and define macro `FMTLO
 #### Static/Shared lib version built by CMake
 ```console
 $ git clone https://github.com/MengRao/fmtlog.git
-$ cd fmtlog && ./build.sh
+$ cd fmtlog
+$ git submodule init
+$ git submodule update
+$ ./build.sh
 ```
-Then copy `fmtlog.h` and `libfmtlog-static.a` or `libfmtlog-shared.so` generated in `.build` dir.
+Then copy `fmtlog.h` and `libfmtlog-static.a`/`libfmtlog-shared.so` generated in `.build` dir.
 
 ## Usage
 ```c++
