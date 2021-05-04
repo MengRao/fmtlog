@@ -1,8 +1,8 @@
 # fmtlog
-fmtlog is an asynchronous logging library using [fmt](https://github.com/fmtlib/fmt) library format. It's extremely performant with runtime latency lower than [NanoLog](https://github.com/PlatformLab/NanoLog) and throughput higher than [spdlog](https://github.com/gabime/spdlog).
+fmtlog is a performant asynchronous logging library using [fmt](https://github.com/fmtlib/fmt) library format.
 
 ## Features
-* Faster (see [Performance](https://github.com/MengRao/fmtlog#Performance) below)
+* Faster - its runtime latency is lower than [NanoLog](https://github.com/PlatformLab/NanoLog) and throughput higher than [spdlog](https://github.com/gabime/spdlog) (see [Performance](https://github.com/MengRao/fmtlog#Performance) below).
 * Headers only or compiled
 * Feature rich formatting on top of excellent fmt library.
 * Asynchronous multi-threaded logging and can also be used synchronously in single thread.
