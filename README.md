@@ -127,7 +127,7 @@ Log header pattern can also be customized with `fmtlog::setHeaderPattern()` and 
 Note that using concatenated named args is more efficient than seperated ones, e.g. `{YmdHMS}` is faster than `{Y}-{m}-{d} {H}:{M}:{S}`.
 
 ## Output
-By default, fmtlog output to stdout. Normally users want to write to a log file instead, this is accomplished by `fmtlog::setLogFile(filename)`. For performance, fmtlog internally buffer data, and under certain conditions will the buffer be flushed into the underlying file. The flush conditions are:
+By default, fmtlog output to stdout. Normally users want to write to a log file instead, this is accomplished by `fmtlog::setLogFile(filename,truncate)`. For performance, fmtlog internally buffer data, and under certain conditions will the buffer be flushed into the underlying file. The flush conditions are:
 * The underlying FILE* is not managed by fmtlog, then fmtlog will not buffer at all. For example, the default stdout FILE* will not be buffered. User can also pass an existing FILE* and indicate whether fmtlog should manage it by `fmtlog::setLogFile(fp, manageFp)`, e.g. `fmtlog::setLogFile(stderr, false)`, then fmtlog will log into stderr without buffering.
 * The buffer size is larger then 8 KB.
 * The oldest data in the buffer has passed a specified duration. The duration is by default 3 seconds, and can be set by `fmtlog::setFlushDelay(ns)`.
