@@ -1,6 +1,0 @@
-[submodule "NanoLog"]
-	path = NanoLog
-	url = https://github.com/PlatformLab/NanoLog
-[submodule "spdlog"]
-	path = spdlog
-	url = https://github.com/gabime/spdlog
