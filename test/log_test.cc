@@ -1,6 +1,5 @@
-#include <bits/stdc++.h>
 #include <chrono>
-#include <unistd.h>
+#include <iostream>
 
 #define FMTLOG_ACTIVE_LEVEL FMTLOG_LEVEL_DBG
 #include "../fmtlog.h"
@@ -54,7 +53,8 @@ int main() {
 
 void runBenchmark() {
   const int RECORDS = 10000;
-  fmtlog::setLogFile("/dev/null", false);
+  // fmtlog::setLogFile("/dev/null", false);
+  fmtlog::closeLogFile();
   fmtlog::setLogCB(nullptr, fmtlog::WRN);
 
   std::chrono::high_resolution_clock::time_point t0, t1;
@@ -66,5 +66,5 @@ void runBenchmark() {
   t1 = std::chrono::high_resolution_clock::now();
 
   double span = std::chrono::duration_cast<std::chrono::duration<double>>(t1 - t0).count();
-  fmt::print("benchmark, front latency: {:.2} ns/msg average\n", (span / RECORDS) * 1e9);
+  fmt::print("benchmark, front latency: {:.1f} ns/msg average\n", (span / RECORDS) * 1e9);
 }

@@ -26,6 +26,7 @@ SOFTWARE.
 #include "fmt/format.h"
 #include <type_traits>
 #include <vector>
+#include <chrono>
 
 #ifdef _WIN32
 #define FAST_THREAD_LOCAL thread_local
@@ -270,18 +271,21 @@ private:
       return 1.0 / tsc_ghz_inv;
     }
 
-    static inline uint64_t rdtsc() { return __builtin_ia32_rdtsc(); }
+    static inline uint64_t rdtsc() {
+#ifdef _WIN32
+      return __rdtsc();
+#else
+      return __builtin_ia32_rdtsc();
+#endif
+    }
 
     inline uint64_t tsc2ns(uint64_t tsc) const { return ns_offset + (int64_t)((int64_t)tsc * tsc_ghz_inv); }
 
     inline uint64_t rdns() const { return tsc2ns(rdtsc()); }
 
-    // If you want cross-platform, use std::chrono as below which incurs one more function call:
-    // return std::chrono::high_resolution_clock::now().time_since_epoch().count();
     static uint64_t rdsysns() {
-      timespec ts;
-      ::clock_gettime(CLOCK_REALTIME, &ts);
-      return ts.tv_sec * 1000000000 + ts.tv_nsec;
+      using namespace std::chrono;
+      return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
     }
 
     // For checking purposes, see test.cc
@@ -339,6 +343,12 @@ private:
   struct unNamedType<fmt::detail::named_arg<char, Arg>>
   { using type = Arg; };
 
+#if FMT_USE_NONTYPE_TEMPLATE_PARAMETERS
+  template<typename Arg, size_t N, fmt::detail::fixed_string<char, N> Str>
+  struct unNamedType<fmt::detail::statically_named_arg<Arg, char, N, Str>>
+  { using type = Arg; };
+#endif
+
   template<typename Arg>
   static inline constexpr bool isCstring() {
     return fmt::detail::mapped_type_constant<Arg, Context>::value == fmt::detail::type::cstring_type;
@@ -369,23 +379,19 @@ private:
 
   template<size_t CstringIdx, typename Arg, typename... Args>
   static inline constexpr size_t getArgSizes(size_t* cstringSize, const Arg& arg, const Args&... args) {
-    // fmt::print("type: {}, id: {}\n", type_name<Arg>(), (int)fmt::detail::mapped_type_constant<Arg, Context>::value);
     if constexpr (isNamedArg<Arg>()) {
       return getArgSizes<CstringIdx>(cstringSize, arg.value, args...);
     }
     else if constexpr (isCstring<Arg>()) {
       size_t len = strlen(arg) + 1;
       cstringSize[CstringIdx] = len;
-      //  fmt::print("size: {}\n", len);
       return len + getArgSizes<CstringIdx + 1>(cstringSize, args...);
     }
     else if constexpr (isString<Arg>()) {
       size_t len = arg.size() + 1;
-      // fmt::print("size: {}\n", len);
       return len + getArgSizes<CstringIdx>(cstringSize, args...);
     }
     else {
-      // fmt::print("size: {}\n", sizeof(Arg));
       return sizeof(Arg) + getArgSizes<CstringIdx>(cstringSize, args...);
     }
   }
@@ -443,7 +449,7 @@ private:
       return decodeArgs<ValueOnly, Idx, DestructIdx, typename unNamedType<ArgType>::type, Args...>(in, args,
                                                                                                    destruct_args);
     }
-    else if constexpr (isCstring<ArgType>() || isString<ArgType>()) {
+    else if constexpr (isCstring<Arg>() || isString<Arg>()) {
       size_t size = strlen(in);
       fmt::string_view v(in, size);
       if constexpr (ValueOnly) {
@@ -464,7 +470,7 @@ private:
         args[Idx] = fmt::detail::make_arg<Context>(*(ArgType*)in);
       }
 
-      if constexpr (needCallDtor<ArgType>()) {
+      if constexpr (needCallDtor<Arg>()) {
         destruct_args[DestructIdx] = in;
         return decodeArgs<ValueOnly, Idx + 1, DestructIdx + 1, Args...>(in + sizeof(ArgType), args, destruct_args);
       }
@@ -483,7 +489,7 @@ private:
     if constexpr (isNamedArg<ArgType>()) {
       destructArgs<DestructIdx, typename unNamedType<ArgType>::type, Args...>(destruct_args);
     }
-    else if constexpr (needCallDtor<ArgType>()) {
+    else if constexpr (needCallDtor<Arg>()) {
       ((ArgType*)destruct_args[DestructIdx])->~ArgType();
       destructArgs<DestructIdx + 1, Args...>(destruct_args);
     }
@@ -497,17 +503,17 @@ private:
                         std::vector<fmt::basic_format_arg<Context>>& args) {
     constexpr size_t num_args = sizeof...(Args);
     constexpr size_t num_dtors = fmt::detail::count<needCallDtor<Args>()...>();
-    char* dtor_args[num_dtors];
+    char* dtor_args[std::max(num_dtors, (size_t)1)];
     char* ret;
     if (argIdx < 0) {
       argIdx = args.size();
       args.resize(argIdx + num_args);
-      ret = decodeArgs<false, 0, 0, Args...>(data, &args[argIdx], dtor_args);
+      ret = decodeArgs<false, 0, 0, Args...>(data, args.data() + argIdx, dtor_args);
     }
     else {
-      ret = decodeArgs<true, 0, 0, Args...>(data, &args[argIdx], dtor_args);
+      ret = decodeArgs<true, 0, 0, Args...>(data, args.data() + argIdx, dtor_args);
     }
-    fmt::detail::vformat_to(out, format, fmt::basic_format_args(&args[argIdx], num_args));
+    fmt::detail::vformat_to(out, format, fmt::basic_format_args(args.data() + argIdx, num_args));
     destructArgs<0, Args...>(dtor_args);
 
     return ret;
@@ -522,7 +528,7 @@ private:
     const char* begin = in.data();
     const char* p = begin;
     std::unique_ptr<char[]> unnamed_str(new char[in.size() + 1 + num_named_args * 5]);
-    fmt::detail::named_arg_info<char> named_args[num_named_args];
+    fmt::detail::named_arg_info<char> named_args[std::max(num_named_args, (size_t)1)];
     storeNamedArgs<0, 0>(named_args, args...);
 
     char* out = (char*)unnamed_str.get();
@@ -583,7 +589,7 @@ public:
       registerLogInfo(logId, formatTo<Args...>, location, level, unnamed_format);
     }
     constexpr size_t num_cstring = fmt::detail::count<isCstring<Args>()...>();
-    size_t cstringSizes[num_cstring];
+    size_t cstringSizes[std::max(num_cstring, (size_t)1)];
     size_t allocSize = getArgSizes<0>(cstringSizes, args...) + 8;
     if (threadBuffer == nullptr) preallocate();
     do {

@@ -2,22 +2,30 @@ cmake_minimum_required(VERSION 3.15)
 
 project(fmtlog CXX)
 
-#SET(CMAKE_CXX_COMPILER "g++")
-
-add_compile_options(-Wall -Werror -O3 -std=c++17)
+if(MSVC)
+    add_compile_options(/O2 /std:c++latest)
+else()
+    add_compile_options(-Wall -O3 -std=c++17)
+    link_libraries(pthread)
+endif()
 
 link_directories(.)
 include_directories(fmt/include)
-link_libraries(pthread)
 
 add_library(fmtlog-shared SHARED fmtlog.cc)
-#target_link_libraries(fmtlog-shared)
+if(MSVC)
+  target_link_libraries(fmtlog-shared fmt)
+endif()
 install(TARGETS fmtlog-shared)
 
 add_library(fmtlog-static fmtlog.cc)
-#target_link_libraries(fmtlog-static)
+if(MSVC)
+  target_link_libraries(fmtlog-static fmt)
+endif()
 install(TARGETS fmtlog-static)
 
 add_subdirectory(fmt)
 add_subdirectory(test)
-add_subdirectory(bench)
+if(NOT MSVC)
+  add_subdirectory(bench)
+endif()

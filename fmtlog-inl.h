@@ -24,17 +24,20 @@ SOFTWARE.
 #include "fmtlog.h"
 #include <mutex>
 #include <thread>
-#include <iostream>
+#include <limits>
 
 #ifdef _WIN32
+#include <windows.h>
+#include <processthreadsapi.h>
 #else
 #include <sys/syscall.h>
 #include <unistd.h>
 #endif
 
 template<int ___ = 0>
-struct fmtlogDetailT
+class fmtlogDetailT
 {
+public:
   // https://github.com/MengRao/str
   template<size_t SIZE>
   class Str
@@ -209,7 +212,7 @@ struct fmtlogDetailT
   FILE* outputFp = nullptr;
   bool manageFp = false;
   uint64_t flushDelay;
-  uint64_t nextFlushTime = std::numeric_limits<uint64_t>::max();
+  uint64_t nextFlushTime = (std::numeric_limits<uint64_t>::max)();
   fmtlog::LogLevel flushLogLevel = fmtlog::OFF;
   std::mutex bufferMutex;
   std::vector<fmtlog::ThreadBuffer*> threadBuffers;
@@ -294,7 +297,7 @@ struct fmtlogDetailT
   void flushLogFile() {
     if (outputFp) fwrite(membuf.data(), 1, membuf.size(), outputFp);
     membuf.clear();
-    nextFlushTime = std::numeric_limits<uint64_t>::max();
+    nextFlushTime = (std::numeric_limits<uint64_t>::max)();
   }
 
   void closeLogFile() {
@@ -418,7 +421,7 @@ struct fmtlogDetailT
     if (now > nextFlushTime) {
       flushLogFile();
     }
-    else if (nextFlushTime == std::numeric_limits<uint64_t>::max()) {
+    else if (nextFlushTime == (std::numeric_limits<uint64_t>::max)()) {
       nextFlushTime = now + flushDelay;
     }
   }
