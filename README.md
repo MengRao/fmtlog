@@ -11,6 +11,10 @@ fmtlog is a performant asynchronous logging library using [fmt](https://github.c
 * Log filtering - log levels can be modified in runtime as well as in compile time.
 * Log frequency limitation - specific logs can be set a minimum logging interval.
 
+## Platforms
+* Linux (GCC 10.2 tested)
+* Windows (MSVC 2019 tested)
+
 ## Install
 C++17 is requried, and fmtlog is dependent on [fmtlib](https://github.com/fmtlib/fmt), you need to install fmtlib first if you haven't.
 #### Header only version
