@@ -257,11 +257,15 @@ private:
         return tsc_ghz;
       }
       else {
-        return calibrate();
+#ifdef _WIN32
+        return calibrate(1000000 * 100); // wait more time as Windows' system time is in 100ns precision
+#else
+        return calibrate(1000000 * 10); //
+#endif
       }
     }
 
-    double calibrate(uint64_t min_wait_ns = 10000000) {
+    double calibrate(uint64_t min_wait_ns) {
       uint64_t delayed_tsc, delayed_ns;
       do {
         syncTime(delayed_tsc, delayed_ns);
