@@ -93,8 +93,10 @@ public:
     resetDate();
     fmtlog::setLogFile(stdout);
     setHeaderPattern("{HMSf} {s:<16} {l}[{t:<6}] ");
-    logInfos.reserve(1024);
-    bgLogInfos.reserve(1024);
+    logInfos.reserve(32);
+    bgLogInfos.reserve(128);
+    threadBuffers.reserve(8);
+    bgThreadBuffers.reserve(8);
     memset(membuf.data(), 0, membuf.capacity());
   }
 
@@ -163,23 +165,20 @@ public:
   struct StaticLogInfo
   {
     // Constructor
-    constexpr StaticLogInfo(fmtlog::FormatToFn fn, const char* location, fmtlog::LogLevel level,
-                            fmt::string_view fmtString)
+    constexpr StaticLogInfo(fmtlog::FormatToFn fn, const char* loc, fmtlog::LogLevel level, fmt::string_view fmtString)
       : formatToFn(fn)
       , formatString(fmtString)
-      , argIdx(-1) {
-      reset(location, level);
-    }
+      , location(loc)
+      , logLevel(level)
+      , argIdx(-1) {}
 
-    void reset(const char* loc, fmtlog::LogLevel level) {
-      location = loc;
-      logLevel = level;
+    void processLocation() {
       size_t size = strlen(location);
-      const char* end = location + size;
+      const char* p = location + size;
       if (size > 255) {
-        location = end - 255;
+        location = p - 255;
       }
-      const char* p = end;
+      endPos = p - location;
       const char* base = location;
       while (p > location) {
         char c = *--p;
@@ -189,7 +188,6 @@ public:
         }
       }
       basePos = base - location;
-      endPos = end - location;
     }
 
     inline fmt::string_view getBase() { return fmt::string_view(location + basePos, endPos - basePos); }
@@ -216,6 +214,7 @@ public:
   fmtlog::LogLevel flushLogLevel = fmtlog::OFF;
   std::mutex bufferMutex;
   std::vector<fmtlog::ThreadBuffer*> threadBuffers;
+  std::vector<fmtlog::ThreadBuffer*> bgThreadBuffers;
   std::mutex logInfoMutex;
   std::vector<StaticLogInfo> logInfos;
   std::vector<StaticLogInfo> bgLogInfos;
@@ -264,23 +263,19 @@ public:
   }
 
   void preallocate() {
-    if (fmtlog::threadBuffer == nullptr) {
-      std::unique_lock<std::mutex> guard(bufferMutex);
-      guard.unlock();
-
-      fmtlog::threadBuffer = new fmtlog::ThreadBuffer();
+    if (fmtlog::threadBuffer) return;
+    fmtlog::threadBuffer = new fmtlog::ThreadBuffer();
 #ifdef _WIN32
-      uint32_t tid = static_cast<uint32_t>(::GetCurrentThreadId());
+    uint32_t tid = static_cast<uint32_t>(::GetCurrentThreadId());
 #else
-      uint32_t tid = static_cast<uint32_t>(::syscall(SYS_gettid));
+    uint32_t tid = static_cast<uint32_t>(::syscall(SYS_gettid));
 #endif
-      fmtlog::threadBuffer->nameSize =
-        fmt::format_to_n(fmtlog::threadBuffer->name, sizeof(fmtlog::threadBuffer->name), "{}", tid).size;
-      sbc.threadBufferCreated();
+    fmtlog::threadBuffer->nameSize =
+      fmt::format_to_n(fmtlog::threadBuffer->name, sizeof(fmtlog::threadBuffer->name), "{}", tid).size;
+    sbc.threadBufferCreated();
 
-      guard.lock();
-      threadBuffers.push_back(fmtlog::threadBuffer);
-    }
+    std::unique_lock<std::mutex> guard(bufferMutex);
+    threadBuffers.push_back(fmtlog::threadBuffer);
   }
 
   template<size_t I, typename T>
@@ -329,87 +324,90 @@ public:
   }
 
   void poll(bool forceFlush) {
-    {
+    if (logInfos.size()) {
       std::unique_lock<std::mutex> lock(logInfoMutex);
-      for (size_t i = bgLogInfos.size(); i < logInfos.size(); i++) {
-        bgLogInfos.push_back(logInfos[i]);
+      for (auto& info : logInfos) {
+        info.processLocation();
       }
+      bgLogInfos.insert(bgLogInfos.end(), logInfos.begin(), logInfos.end());
+      logInfos.clear();
+    }
+    if (threadBuffers.size()) {
+      std::unique_lock<std::mutex> lock(bufferMutex);
+      bgThreadBuffers.insert(bgThreadBuffers.end(), threadBuffers.begin(), threadBuffers.end());
+      threadBuffers.clear();
     }
 
-    {
-      std::unique_lock<std::mutex> lock(bufferMutex);
-      for (size_t i = 0; i < threadBuffers.size(); i++) {
-        fmtlog::ThreadBuffer* tb = threadBuffers[i];
-        setArgVal<6>(fmt::string_view(tb->name, tb->nameSize));
-        while (true) {
-          auto header = tb->varq.front();
-          if (!header) {
-            if (tb->shouldDeallocate) {
-              delete tb;
+    for (size_t i = 0; i < bgThreadBuffers.size(); i++) {
+      fmtlog::ThreadBuffer* tb = bgThreadBuffers[i];
+      setArgVal<6>(fmt::string_view(tb->name, tb->nameSize));
+      while (true) {
+        auto header = tb->varq.front();
+        if (!header) {
+          if (tb->shouldDeallocate) {
+            delete tb;
 
-              std::swap(threadBuffers[i], threadBuffers.back());
-              threadBuffers.pop_back();
-              i--;
-            }
-            break;
+            std::swap(bgThreadBuffers[i], bgThreadBuffers.back());
+            bgThreadBuffers.pop_back();
+            i--;
           }
+          break;
+        }
 
-          if (header->logId >= (int)bgLogInfos.size()) break;
-          char* end = (char*)header + header->size;
-          char* data = (char*)(header + 1);
-          StaticLogInfo* info;
-          if (header->logId < 0) { // log once
-            fmtlog::LogLevel level = (fmtlog::LogLevel)(-1 - header->logId);
-            const char* location = *(const char**)data;
-            data += 8;
-            onceLogInfo.reset(location, level);
-            info = &onceLogInfo;
-          }
-          else {
-            info = &bgLogInfos[header->logId];
-          }
-          uint64_t tsc = *(uint64_t*)data;
+        if (header->logId >= (int)bgLogInfos.size()) break; // it's just put into logInfos, handle it in the next poll
+        char* end = (char*)header + header->size;
+        char* data = (char*)(header + 1);
+        StaticLogInfo* info;
+        if (header->logId < 0) { // log once
+          onceLogInfo.logLevel = (fmtlog::LogLevel)(-1 - header->logId);
+          onceLogInfo.location = *(const char**)data;
           data += 8;
-          uint64_t ts = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);
-          // the date could go back when polling different threads
-          uint64_t t = (ts > midnightNs) ? (ts - midnightNs) : 0;
-          nanosecond.fromi(t % 1000000000);
-          t /= 1000000000;
-          second.fromi(t % 60);
-          t /= 60;
-          minute.fromi(t % 60);
-          t /= 60;
-          uint32_t h = t; // hour
-          if (h > 23) {
-            h %= 24;
-            resetDate();
-          }
-          hour.fromi(h);
-          setArgVal<14>(info->getBase());
-          setArgVal<15>(info->getLocation());
-          const char* levelNames[5] = {"DBG", "INF", "WRN", "ERR", "OFF"};
-          logLevel = levelNames[info->logLevel];
+          onceLogInfo.processLocation();
+          info = &onceLogInfo;
+        }
+        else {
+          info = &bgLogInfos[header->logId];
+        }
+        uint64_t tsc = *(uint64_t*)data;
+        data += 8;
+        uint64_t ts = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);
+        // the date could go back when polling different threads
+        uint64_t t = (ts > midnightNs) ? (ts - midnightNs) : 0;
+        nanosecond.fromi(t % 1000000000);
+        t /= 1000000000;
+        second.fromi(t % 60);
+        t /= 60;
+        minute.fromi(t % 60);
+        t /= 60;
+        uint32_t h = t; // hour
+        if (h > 23) {
+          h %= 24;
+          resetDate();
+        }
+        hour.fromi(h);
+        setArgVal<14>(info->getBase());
+        setArgVal<15>(info->getLocation());
+        logLevel = "DBG INF WRN ERR OFF" + (info->logLevel << 2);
 
-          size_t headerPos = membuf.size();
-          fmt::detail::vformat_to(membuf, headerPattern, fmt::basic_format_args(args.data(), parttenArgSize));
-          size_t bodyPos = membuf.size();
+        size_t headerPos = membuf.size();
+        fmt::detail::vformat_to(membuf, headerPattern, fmt::basic_format_args(args.data(), parttenArgSize));
+        size_t bodyPos = membuf.size();
 
-          if (info->formatToFn) {
-            info->formatToFn(info->formatString, data, membuf, info->argIdx, args);
-          }
-          else {
-            membuf.append(fmt::string_view(data, end - data));
-          }
-          tb->varq.pop();
+        if (info->formatToFn) {
+          info->formatToFn(info->formatString, data, membuf, info->argIdx, args);
+        }
+        else {
+          membuf.append(fmt::string_view(data, end - data));
+        }
+        tb->varq.pop();
 
-          if (logCB && info->logLevel >= minCBLogLevel) {
-            logCB(ts, info->logLevel, info->getLocation(), info->basePos, fmt::string_view(tb->name, tb->nameSize),
-                  fmt::string_view(membuf.data() + headerPos, membuf.size() - headerPos), bodyPos - headerPos);
-          }
-          membuf.push_back('\n');
-          if (membuf.size() >= 1024 * 8 || info->logLevel >= flushLogLevel) {
-            flushLogFile();
-          }
+        if (logCB && info->logLevel >= minCBLogLevel) {
+          logCB(ts, info->logLevel, info->getLocation(), info->basePos, fmt::string_view(tb->name, tb->nameSize),
+                fmt::string_view(membuf.data() + headerPos, membuf.size() - headerPos), bodyPos - headerPos);
+        }
+        membuf.push_back('\n');
+        if (membuf.size() >= 1024 * 8 || info->logLevel >= flushLogLevel) {
+          flushLogFile();
         }
       }
     }
@@ -444,7 +442,7 @@ void fmtlogT<_>::registerLogInfo(int& logId, FormatToFn fn, const char* location
   auto& d = fmtlogDetailWrapper<>::impl;
   std::lock_guard<std::mutex> lock(d.logInfoMutex);
   if (logId >= 0) return;
-  logId = d.logInfos.size();
+  logId = d.logInfos.size() + d.bgLogInfos.size();
   d.logInfos.emplace_back(fn, location, level, fmtString);
 }
 
