@@ -371,7 +371,8 @@ public:
           uint64_t tsc = *(uint64_t*)data;
           data += 8;
           uint64_t ts = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);
-          uint64_t t = ts - midnightNs;
+          // the date could go back when polling different threads
+          uint64_t t = (ts > midnightNs) ? (ts - midnightNs) : 0;
           nanosecond.fromi(t % 1000000000);
           t /= 1000000000;
           second.fromi(t % 60);
