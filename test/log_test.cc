@@ -26,6 +26,10 @@ int main() {
 
   fmtlog::poll();
 
+  for (int i = 0; i < 3; i++) {
+    logio("log once: {}", i);
+  }
+
   fmtlog::setThreadName("main");
   logi("Thread name changed");
 

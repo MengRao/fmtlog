@@ -145,7 +145,7 @@ private:
   typedef char* (*FormatToFn)(fmt::string_view format, char* data, MemoryBuffer& out, int& argIdx,
                               std::vector<fmt::basic_format_arg<Context>>& args);
 
-  static void registerLogInfo(int& logId, FormatToFn fn, const char* location, LogLevel level,
+  static void registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
                               fmt::string_view fmtString);
 
   // https://github.com/MengRao/SPSC_Queue
@@ -156,7 +156,7 @@ private:
     struct MsgHeader
     {
       uint32_t size;
-      int logId;
+      uint32_t logId;
     };
     static constexpr uint32_t BLK_CNT = Bytes / sizeof(MsgHeader);
 
@@ -579,12 +579,13 @@ private:
 
 public:
   template<typename S, typename... Args>
-  inline void log(int& logId, uint64_t tsc, const char* location, LogLevel level, const S& format, Args&&... args) {
+  inline void log(uint32_t& logId, uint64_t tsc, const char* location, LogLevel level, const S& format,
+                  Args&&... args) {
     constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
     if constexpr (num_named_args == 0) {
       fmt::detail::check_format_string<Args...>(format);
     }
-    if (logId < 0) {
+    if (!logId) {
       auto unnamed_format = unNameFormat<false>(fmt::to_string_view(format), nullptr, args...);
       registerLogInfo(logId, formatTo<Args...>, location, level, unnamed_format);
     }
@@ -612,11 +613,11 @@ public:
     }
     fmt::string_view sv(format);
     size_t formatted_size = fmt::formatted_size(sv, args...);
-    size_t allocSize = formatted_size + 8 + 4 + 8;
+    size_t allocSize = formatted_size + 8 + 8;
     if (threadBuffer == nullptr) preallocate();
     do {
       if (threadBuffer->varq.tryPush(allocSize, [&](typename SPSCVarQueueOPT<>::MsgHeader* header) {
-            header->logId = -1 - (int)level;
+            header->logId = (uint32_t)level;
             char* writePos = (char*)(header + 1);
             *(const char**)writePos = location;
             writePos += 8;
@@ -657,7 +658,7 @@ inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() {
 
 #define FMTLOG(level, format, ...)                                                                                     \
   do {                                                                                                                 \
-    static int logId = -1;                                                                                             \
+    static uint32_t logId = 0;                                                                                         \
                                                                                                                        \
     if (level < fmtlog::getLogLevel()) break;                                                                          \
                                                                                                                        \
@@ -667,7 +668,7 @@ inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() {
 
 #define FMTLOG_LIMIT(min_interval, level, format, ...)                                                                 \
   do {                                                                                                                 \
-    static int logId = -1;                                                                                             \
+    static uint32_t logId = 0;                                                                                         \
     static uint64_t limitNs = 0;                                                                                       \
                                                                                                                        \
     if (level < fmtlog::getLogLevel()) break;                                                                          \

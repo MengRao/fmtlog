@@ -84,8 +84,7 @@ public:
   };
 
   fmtlogDetailT()
-    : flushDelay(3000000000)
-    , onceLogInfo(nullptr, ":", fmtlog::INF, fmt::string_view()) {
+    : flushDelay(3000000000) {
     args.reserve(4096);
     args.resize(parttenArgSize);
 
@@ -95,6 +94,10 @@ public:
     setHeaderPattern("{HMSf} {s:<16} {l}[{t:<6}] ");
     logInfos.reserve(32);
     bgLogInfos.reserve(128);
+    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::DBG, fmt::string_view());
+    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::INF, fmt::string_view());
+    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::WRN, fmt::string_view());
+    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::ERR, fmt::string_view());
     threadBuffers.reserve(8);
     bgThreadBuffers.reserve(8);
     memset(membuf.data(), 0, membuf.capacity());
@@ -243,7 +246,6 @@ public:
   Str<9> nanosecond;
   Str<3> logLevel;
   std::vector<fmt::basic_format_arg<fmtlog::Context>> args;
-  StaticLogInfo onceLogInfo;
 
   volatile bool threadRunning = false;
   std::thread thr;
@@ -354,19 +356,14 @@ public:
           break;
         }
 
-        if (header->logId >= (int)bgLogInfos.size()) break; // it's just put into logInfos, handle it in the next poll
+        if (header->logId >= bgLogInfos.size()) break; // it's just put into logInfos, handle it in the next poll
+        StaticLogInfo& info = bgLogInfos[header->logId];
         char* end = (char*)header + header->size;
         char* data = (char*)(header + 1);
-        StaticLogInfo* info;
-        if (header->logId < 0) { // log once
-          onceLogInfo.logLevel = (fmtlog::LogLevel)(-1 - header->logId);
-          onceLogInfo.location = *(const char**)data;
+        if (!info.formatToFn) { // log once
+          info.location = *(const char**)data;
           data += 8;
-          onceLogInfo.processLocation();
-          info = &onceLogInfo;
-        }
-        else {
-          info = &bgLogInfos[header->logId];
+          info.processLocation();
         }
         uint64_t tsc = *(uint64_t*)data;
         data += 8;
@@ -385,28 +382,28 @@ public:
           resetDate();
         }
         hour.fromi(h);
-        setArgVal<14>(info->getBase());
-        setArgVal<15>(info->getLocation());
-        logLevel = "DBG INF WRN ERR OFF" + (info->logLevel << 2);
+        setArgVal<14>(info.getBase());
+        setArgVal<15>(info.getLocation());
+        logLevel = "DBG INF WRN ERR OFF" + (info.logLevel << 2);
 
         size_t headerPos = membuf.size();
         fmt::detail::vformat_to(membuf, headerPattern, fmt::basic_format_args(args.data(), parttenArgSize));
         size_t bodyPos = membuf.size();
 
-        if (info->formatToFn) {
-          info->formatToFn(info->formatString, data, membuf, info->argIdx, args);
+        if (info.formatToFn) {
+          info.formatToFn(info.formatString, data, membuf, info.argIdx, args);
         }
-        else {
+        else { // log once
           membuf.append(fmt::string_view(data, end - data));
         }
         tb->varq.pop();
 
-        if (logCB && info->logLevel >= minCBLogLevel) {
-          logCB(ts, info->logLevel, info->getLocation(), info->basePos, fmt::string_view(tb->name, tb->nameSize),
+        if (logCB && info.logLevel >= minCBLogLevel) {
+          logCB(ts, info.logLevel, info.getLocation(), info.basePos, fmt::string_view(tb->name, tb->nameSize),
                 fmt::string_view(membuf.data() + headerPos, membuf.size() - headerPos), bodyPos - headerPos);
         }
         membuf.push_back('\n');
-        if (membuf.size() >= 1024 * 8 || info->logLevel >= flushLogLevel) {
+        if (membuf.size() >= 1024 * 8 || info.logLevel >= flushLogLevel) {
           flushLogFile();
         }
       }
@@ -437,11 +434,11 @@ template<int _>
 fmtlogDetailT<> fmtlogDetailWrapper<_>::impl;
 
 template<int _>
-void fmtlogT<_>::registerLogInfo(int& logId, FormatToFn fn, const char* location, LogLevel level,
+void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
                                  fmt::string_view fmtString) {
   auto& d = fmtlogDetailWrapper<>::impl;
   std::lock_guard<std::mutex> lock(d.logInfoMutex);
-  if (logId >= 0) return;
+  if (logId) return;
   logId = d.logInfos.size() + d.bgLogInfos.size();
   d.logInfos.emplace_back(fn, location, level, fmtString);
 }
