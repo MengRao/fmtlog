@@ -188,8 +188,8 @@ private:
     void push() {
       uint32_t blk_sz = (size + sizeof(MsgHeader) - 1) / sizeof(MsgHeader);
       blk[write_idx + blk_sz].size = 0;
-      blk[write_idx].size = size;
       std::atomic_thread_fence(std::memory_order_release);
+      blk[write_idx].size = size;
       write_idx += blk_sz;
       free_write_cnt -= blk_sz;
     }
