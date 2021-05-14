@@ -24,6 +24,13 @@ int main() {
   a = 7;
   *sptr = 8;
 
+  char strarr[10] = "111";
+  char* cstr = strarr;
+  std::string str = "aaa";
+  logi("str: {}, pstr: {}, strarr: {}, pstrarr: {}, cstr: {}, pcstr: {}", str, &str, strarr, &strarr, cstr, &cstr);
+  str = "bbb";
+  strcpy(cstr, "222");
+
   // logi("This msg will trigger compile error: {", 123);
 
   logd("This message wont be logged since it is lower "
