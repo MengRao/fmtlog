@@ -17,6 +17,13 @@ int main() {
   char randomString[] = "Hello World";
   logi("A string, pointer, number, and float: '{}', {}, {}, {}", randomString, (void*)&randomString, 512, 3.14159);
 
+  int a = 4;
+  auto sptr = std::make_shared<int>(5);
+  auto uptr = std::make_unique<int>(6);
+  logi("void ptr: {}, ptr: {}, sptr: {}, uptr: {}", (void*)&a, &a, sptr, std::move(uptr));
+  a = 7;
+  *sptr = 8;
+
   // logi("This msg will trigger compile error: {", 123);
 
   logd("This message wont be logged since it is lower "

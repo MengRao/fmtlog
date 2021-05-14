@@ -27,6 +27,7 @@ SOFTWARE.
 #include <type_traits>
 #include <vector>
 #include <chrono>
+#include <memory>
 
 #ifdef _WIN32
 #define FAST_THREAD_LOCAL thread_local
@@ -49,6 +50,32 @@ SOFTWARE.
 #ifndef FMTLOG_ACTIVE_LEVEL
 #define FMTLOG_ACTIVE_LEVEL FMTLOG_LEVEL_INF
 #endif
+
+namespace fmtlogdetail {
+template<typename Arg>
+struct UnrefPtr : std::false_type
+{ using type = Arg; };
+
+template<>
+struct UnrefPtr<char*> : std::false_type
+{ using type = char*; };
+
+template<>
+struct UnrefPtr<void*> : std::false_type
+{ using type = void*; };
+
+template<typename Arg>
+struct UnrefPtr<std::shared_ptr<Arg>> : std::true_type
+{ using type = Arg; };
+
+template<typename Arg, typename D>
+struct UnrefPtr<std::unique_ptr<Arg, D>> : std::true_type
+{ using type = Arg; };
+
+template<typename Arg>
+struct UnrefPtr<Arg*> : std::true_type
+{ using type = Arg; };
+}; // namespace fmtlogdetail
 
 template<int __ = 0>
 class fmtlogT
@@ -336,7 +363,7 @@ private:
 
   template<typename Arg>
   static inline constexpr bool isNamedArg() {
-    return fmt::detail::is_named_arg<typename std::remove_reference<Arg>::type>::value;
+    return fmt::detail::is_named_arg<fmt::remove_cvref_t<Arg>>::value;
   }
 
   template<typename Arg>
@@ -353,6 +380,7 @@ private:
   { using type = Arg; };
 #endif
 
+
   template<typename Arg>
   static inline constexpr bool isCstring() {
     return fmt::detail::mapped_type_constant<Arg, Context>::value == fmt::detail::type::cstring_type;
@@ -365,15 +393,12 @@ private:
 
   template<typename Arg>
   static inline constexpr bool needCallDtor() {
-    using ArgType = typename std::remove_reference<Arg>::type;
-    if constexpr (isCstring<Arg>()) return false;
-    if constexpr (isString<Arg>()) return false;
+    using ArgType = fmt::remove_cvref_t<Arg>;
     if constexpr (isNamedArg<Arg>()) {
-      return !std::is_trivially_destructible<typename unNamedType<ArgType>::type>::value;
+      return needCallDtor<typename unNamedType<ArgType>::type>();
     }
-    else {
-      return !std::is_trivially_destructible<ArgType>::value;
-    }
+    if constexpr (isString<Arg>()) return false;
+    return !std::is_trivially_destructible<ArgType>::value;
   }
 
   template<size_t CstringIdx>
@@ -421,7 +446,7 @@ private:
       return encodeArgs<CstringIdx>(cstringSize, out + len + 1, std::forward<Args>(args)...);
     }
     else {
-      new (out) typename std::remove_reference<Arg>::type(std::forward<Arg>(arg));
+      new (out) fmt::remove_cvref_t<Arg>(std::forward<Arg>(arg));
       return encodeArgs<CstringIdx>(cstringSize, out + sizeof(Arg), std::forward<Args>(args)...);
     }
   }
@@ -448,7 +473,8 @@ private:
 
   template<bool ValueOnly, size_t Idx, size_t DestructIdx, typename Arg, typename... Args>
   static inline char* decodeArgs(char* in, fmt::basic_format_arg<Context>* args, char** destruct_args) {
-    using ArgType = typename std::remove_reference<Arg>::type;
+    using namespace fmtlogdetail;
+    using ArgType = fmt::remove_cvref_t<Arg>;
     if constexpr (isNamedArg<ArgType>()) {
       return decodeArgs<ValueOnly, Idx, DestructIdx, typename unNamedType<ArgType>::type, Args...>(in, args,
                                                                                                    destruct_args);
@@ -468,10 +494,20 @@ private:
     else {
       if constexpr (ValueOnly) {
         fmt::detail::value<Context>& value_ = *(fmt::detail::value<Context>*)(args + Idx);
-        value_ = fmt::detail::arg_mapper<Context>().map(*(ArgType*)in);
+        if constexpr (UnrefPtr<ArgType>::value) {
+          value_ = fmt::detail::arg_mapper<Context>().map(**(ArgType*)in);
+        }
+        else {
+          value_ = fmt::detail::arg_mapper<Context>().map(*(ArgType*)in);
+        }
       }
       else {
-        args[Idx] = fmt::detail::make_arg<Context>(*(ArgType*)in);
+        if constexpr (UnrefPtr<ArgType>::value) {
+          args[Idx] = fmt::detail::make_arg<Context>(**(ArgType*)in);
+        }
+        else {
+          args[Idx] = fmt::detail::make_arg<Context>(*(ArgType*)in);
+        }
       }
 
       if constexpr (needCallDtor<Arg>()) {
@@ -489,7 +525,7 @@ private:
 
   template<size_t DestructIdx, typename Arg, typename... Args>
   static inline void destructArgs(char** destruct_args) {
-    using ArgType = typename std::remove_reference<Arg>::type;
+    using ArgType = fmt::remove_cvref_t<Arg>;
     if constexpr (isNamedArg<ArgType>()) {
       destructArgs<DestructIdx, typename unNamedType<ArgType>::type, Args...>(destruct_args);
     }
@@ -585,9 +621,10 @@ public:
   template<typename S, typename... Args>
   inline void log(uint32_t& logId, uint64_t tsc, const char* location, LogLevel level, const S& format,
                   Args&&... args) {
+    using namespace fmtlogdetail;
     constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
     if constexpr (num_named_args == 0) {
-      fmt::detail::check_format_string<Args...>(format);
+      fmt::detail::check_format_string<typename UnrefPtr<fmt::remove_cvref_t<Args>>::type...>(format);
     }
     if (!logId) {
       auto unnamed_format = unNameFormat<false>(fmt::to_string_view(format), nullptr, args...);
