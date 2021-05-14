@@ -99,6 +99,26 @@ logi("dynamic precision: {:.{}f}", 3.14, 1);
 // A compile-time error because 'd' is an invalid specifier for strings.
 logi("{:d}", "foo");
 ```
+As an asynchronous logging library, fmtlog provides additional support for passing arguments by pointer(which is seldom needed for fmtlib and it only supports void and char pointers). User can pass a pointer of any type as argument to avoid copy overhead if the lifetime of referred object is assured(otherwise the polling thread will refer to a dangling pointer!). For string arg as an example, fmtlog copies string content for type `std::string` by default, but only a pointer for type `std::string*`:
+```c++
+  std::string str = "aaa";
+  logi("str: {}, pstr: {}", str, &str);
+  str = "bbb";
+  fmtlog::poll();
+  // output: str: aaa, pstr: bbb
+```
+In addition to raw pointers, fmtlog supports `std::shared_ptr` and `std::unique_ptr` as well, which makes object lifetime management much easier:
+```c++
+  int a = 4;
+  auto sptr = std::make_shared<int>(5);
+  auto uptr = std::make_unique<int>(6);
+  logi("void ptr: {}, ptr: {}, sptr: {}, uptr: {}", (void*)&a, &a, sptr, std::move(uptr));
+  a = 7;
+  *sptr = 8;
+  fmtlog::poll();
+  // output: void ptr: 0x7ffd08ac53ac, ptr: 7, sptr: 8, uptr: 6
+```
+
 Log header pattern can also be customized with `fmtlog::setHeaderPattern()` and the argument is a fmtlib format string with named arguments. The default header pattern is "{HMSf} {s:<16} {l}[{t:<6}] " (example: "15:46:19.149844 log_test.cc:43   INF[448050] "). All supported named arguments in header are as below:
 | name | meaning| example |
 | :------ | :-------: | :-----: |
