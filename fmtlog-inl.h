@@ -522,5 +522,10 @@ void fmtlogT<_>::stopPollingThread() {
   fmtlogDetailWrapper<>::impl.stopPollingThread();
 }
 
+template<int _>
+void fmtlogT<_>::setTscGhz(double tscGhz) {
+  fmtlogWrapper<>::impl.tscns.init(tscGhz);
+}
+
 template class fmtlogT<0>;
 

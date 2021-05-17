@@ -90,6 +90,11 @@ public:
     OFF
   };
 
+  // If you know the exact tsc frequency(in ghz) in the os, tell fmtlog!
+  // But how can I know the frequency? Check below link(for Linux only):
+  // https://github.com/MengRao/tscns#i-dont-wanna-wait-a-long-time-for-calibration-can-i-cheat
+  static void setTscGhz(double tscGhz);
+
   // Preallocate thread queue for current thread
   static void preallocate();
 
