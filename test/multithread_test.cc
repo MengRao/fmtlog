@@ -11,7 +11,7 @@ atomic<int> start_cnt;
 size_t msg_cnt = 0;
 size_t cb_size = 0;
 
-void logcb(uint64_t ns, fmtlog::LogLevel level, fmt::string_view location, size_t basePos, fmt::string_view threadName,
+void logcb(int64_t ns, fmtlog::LogLevel level, fmt::string_view location, size_t basePos, fmt::string_view threadName,
            fmt::string_view msg, size_t bodyPos) {
   msg_cnt++;
   cb_size += msg.size();

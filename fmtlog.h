@@ -112,7 +112,7 @@ public:
 
   // Set flush delay in nanosecond
   // If there's msg older than ns in the buffer, flush will be triggered
-  static void setFlushDelay(uint64_t ns);
+  static void setFlushDelay(int64_t ns);
 
   // If current msg has level >= flushLogLevel, flush will be triggered
   static void flushOn(LogLevel flushLogLevel);
@@ -125,7 +125,7 @@ public:
   // threadName: thread id or the name user set with setThreadName
   // msg: full log msg with header
   // bodyPos: log body index in the msg
-  typedef void (*LogCBFn)(uint64_t ns, LogLevel level, fmt::string_view location, size_t basePos,
+  typedef void (*LogCBFn)(int64_t ns, LogLevel level, fmt::string_view location, size_t basePos,
                           fmt::string_view threadName, fmt::string_view msg, size_t bodyPos);
 
   // Set a callback function for all log msgs with a mininum log level
@@ -149,7 +149,7 @@ public:
 
   // Run a polling thread in the background with a polling interval
   // Note that user must not call poll() himself when the thread is running
-  static void startPollingThread(uint64_t pollInterval = 1000000);
+  static void startPollingThread(int64_t pollInterval = 1000000);
 
   // Stop the polling thread
   static void stopPollingThread();
@@ -297,17 +297,17 @@ private:
       }
     }
 
-    double calibrate(uint64_t min_wait_ns) {
-      uint64_t delayed_tsc, delayed_ns;
+    double calibrate(int64_t min_wait_ns) {
+      int64_t delayed_tsc, delayed_ns;
       do {
         syncTime(delayed_tsc, delayed_ns);
       } while ((delayed_ns - base_ns) < min_wait_ns);
-      tsc_ghz_inv = (double)(int64_t)(delayed_ns - base_ns) / (int64_t)(delayed_tsc - base_tsc);
+      tsc_ghz_inv = (double)(delayed_ns - base_ns) / (delayed_tsc - base_tsc);
       adjustOffset();
       return 1.0 / tsc_ghz_inv;
     }
 
-    static inline uint64_t rdtsc() {
+    static inline int64_t rdtsc() {
 #ifdef _WIN32
       return __rdtsc();
 #else
@@ -315,25 +315,25 @@ private:
 #endif
     }
 
-    inline uint64_t tsc2ns(uint64_t tsc) const { return ns_offset + (int64_t)((int64_t)tsc * tsc_ghz_inv); }
+    inline int64_t tsc2ns(int64_t tsc) const { return ns_offset + (int64_t)(tsc * tsc_ghz_inv); }
 
-    inline uint64_t rdns() const { return tsc2ns(rdtsc()); }
+    inline int64_t rdns() const { return tsc2ns(rdtsc()); }
 
-    static uint64_t rdsysns() {
+    static int64_t rdsysns() {
       using namespace std::chrono;
       return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
     }
 
     // For checking purposes, see test.cc
-    uint64_t rdoffset() const { return ns_offset; }
+    int64_t rdoffset() const { return ns_offset; }
 
   private:
     // Linux kernel sync time by finding the first try with tsc diff < 50000
     // We do better: we find the try with the mininum tsc diff
-    void syncTime(uint64_t& tsc, uint64_t& ns) {
+    void syncTime(int64_t& tsc, int64_t& ns) {
       const int N = 10;
-      uint64_t tscs[N + 1];
-      uint64_t nses[N + 1];
+      int64_t tscs[N + 1];
+      int64_t nses[N + 1];
 
       tscs[0] = rdtsc();
       for (int i = 1; i <= N; i++) {
@@ -349,12 +349,12 @@ private:
       ns = nses[best];
     }
 
-    void adjustOffset() { ns_offset = base_ns - (int64_t)((int64_t)base_tsc * tsc_ghz_inv); }
+    void adjustOffset() { ns_offset = base_ns - (int64_t)(base_tsc * tsc_ghz_inv); }
 
     alignas(64) double tsc_ghz_inv; // make sure tsc_ghz_inv and ns_offset are on the same cache line
-    uint64_t ns_offset;
-    uint64_t base_tsc;
-    uint64_t base_ns;
+    int64_t ns_offset;
+    int64_t base_tsc;
+    int64_t base_ns;
   };
 
   bool inited = false;
@@ -624,8 +624,7 @@ private:
 
 public:
   template<typename S, typename... Args>
-  inline void log(uint32_t& logId, uint64_t tsc, const char* location, LogLevel level, const S& format,
-                  Args&&... args) {
+  inline void log(uint32_t& logId, int64_t tsc, const char* location, LogLevel level, const S& format, Args&&... args) {
     using namespace fmtlogdetail;
     constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
     if constexpr (num_named_args == 0) {
@@ -643,7 +642,7 @@ public:
       if (threadBuffer->varq.tryPush(allocSize, [&](typename SPSCVarQueueOPT<>::MsgHeader* header) {
             header->logId = logId;
             char* writePos = (char*)(header + 1);
-            *(uint64_t*)writePos = tsc;
+            *(int64_t*)writePos = tsc;
             writePos += 8;
             encodeArgs<0>(cstringSizes, writePos, std::forward<Args>(args)...);
           }))
@@ -667,7 +666,7 @@ public:
             char* writePos = (char*)(header + 1);
             *(const char**)writePos = location;
             writePos += 8;
-            *(uint64_t*)writePos = tscns.rdtsc();
+            *(int64_t*)writePos = tscns.rdtsc();
             writePos += 8;
             fmt::format_to(writePos, sv, args...);
           }))
@@ -715,11 +714,11 @@ inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() {
 #define FMTLOG_LIMIT(min_interval, level, format, ...)                                                                 \
   do {                                                                                                                 \
     static uint32_t logId = 0;                                                                                         \
-    static uint64_t limitNs = 0;                                                                                       \
+    static int64_t limitNs = 0;                                                                                        \
                                                                                                                        \
     if (level < fmtlog::getLogLevel()) break;                                                                          \
-    uint64_t tsc = fmtlogWrapper<>::impl.tscns.rdtsc();                                                                \
-    uint64_t ns = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);                                                             \
+    int64_t tsc = fmtlogWrapper<>::impl.tscns.rdtsc();                                                                 \
+    int64_t ns = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);                                                              \
     if (ns < limitNs) break;                                                                                           \
     limitNs = ns + min_interval;                                                                                       \
                                                                                                                        \

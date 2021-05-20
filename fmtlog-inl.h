@@ -207,13 +207,13 @@ public:
   };
 
   static thread_local ThreadBufferDestroyer sbc;
-  uint64_t midnightNs;
+  int64_t midnightNs;
   fmt::string_view headerPattern;
   bool shouldDeallocateHeader = false;
   FILE* outputFp = nullptr;
   bool manageFp = false;
-  uint64_t flushDelay;
-  uint64_t nextFlushTime = (std::numeric_limits<uint64_t>::max)();
+  int64_t flushDelay;
+  int64_t nextFlushTime = (std::numeric_limits<int64_t>::max)();
   fmtlog::LogLevel flushLogLevel = fmtlog::OFF;
   std::mutex bufferMutex;
   std::vector<fmtlog::ThreadBuffer*> threadBuffers;
@@ -294,7 +294,7 @@ public:
   void flushLogFile() {
     if (outputFp) fwrite(membuf.data(), 1, membuf.size(), outputFp);
     membuf.clear();
-    nextFlushTime = (std::numeric_limits<uint64_t>::max)();
+    nextFlushTime = (std::numeric_limits<int64_t>::max)();
   }
 
   void closeLogFile() {
@@ -303,14 +303,14 @@ public:
     manageFp = false;
   }
 
-  void startPollingThread(uint64_t pollInterval) {
+  void startPollingThread(int64_t pollInterval) {
     stopPollingThread();
     threadRunning = true;
     thr = std::thread([pollInterval, this]() {
       while (threadRunning) {
-        uint64_t before = fmtlogWrapper<>::impl.tscns.rdns();
+        int64_t before = fmtlogWrapper<>::impl.tscns.rdns();
         poll(false);
-        uint64_t delay = fmtlogWrapper<>::impl.tscns.rdns() - before;
+        int64_t delay = fmtlogWrapper<>::impl.tscns.rdns() - before;
         if (delay < pollInterval) {
           std::this_thread::sleep_for(std::chrono::nanoseconds(pollInterval - delay));
         }
@@ -365,9 +365,9 @@ public:
           data += 8;
           info.processLocation();
         }
-        uint64_t tsc = *(uint64_t*)data;
+        int64_t tsc = *(int64_t*)data;
         data += 8;
-        uint64_t ts = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);
+        int64_t ts = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);
         // the date could go back when polling different threads
         uint64_t t = (ts > midnightNs) ? (ts - midnightNs) : 0;
         nanosecond.fromi(t % 1000000000);
@@ -413,11 +413,11 @@ public:
       flushLogFile();
       return;
     }
-    uint64_t now = fmtlogWrapper<>::impl.tscns.rdns();
+    int64_t now = fmtlogWrapper<>::impl.tscns.rdns();
     if (now > nextFlushTime) {
       flushLogFile();
     }
-    else if (nextFlushTime == (std::numeric_limits<uint64_t>::max)()) {
+    else if (nextFlushTime == (std::numeric_limits<int64_t>::max)()) {
       nextFlushTime = now + flushDelay;
     }
   }
@@ -475,7 +475,7 @@ void fmtlogT<_>::setLogFile(FILE* fp, bool manageFp) {
 }
 
 template<int _>
-void fmtlogT<_>::setFlushDelay(uint64_t ns) {
+void fmtlogT<_>::setFlushDelay(int64_t ns) {
   fmtlogDetailWrapper<>::impl.flushDelay = ns;
 }
 
@@ -513,7 +513,7 @@ void fmtlogT<_>::setHeaderPattern(const char* pattern) {
 }
 
 template<int _>
-void fmtlogT<_>::startPollingThread(uint64_t pollInterval) {
+void fmtlogT<_>::startPollingThread(int64_t pollInterval) {
   fmtlogDetailWrapper<>::impl.startPollingThread(pollInterval);
 }
 

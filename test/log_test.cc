@@ -6,7 +6,7 @@
 
 void runBenchmark();
 
-void logcb(uint64_t ns, fmtlog::LogLevel level, fmt::string_view location, size_t basePos, fmt::string_view threadName,
+void logcb(int64_t ns, fmtlog::LogLevel level, fmt::string_view location, size_t basePos, fmt::string_view threadName,
            fmt::string_view msg, size_t bodyPos) {
   fmt::print("callback full msg: {}\n", msg);
   msg.remove_prefix(bodyPos);
