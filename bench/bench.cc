@@ -1,10 +1,10 @@
 #include <bits/stdc++.h>
 #include <chrono>
 
+#include "../fmtlog.h"
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/async.h"
-#include "../fmtlog.h"
 #include "NanoLog/runtime/NanoLogCpp17.h"
 
 namespace GeneratedFunctions {
