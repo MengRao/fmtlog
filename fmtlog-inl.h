@@ -214,6 +214,7 @@ public:
   bool manageFp = false;
   int64_t flushDelay;
   int64_t nextFlushTime = (std::numeric_limits<int64_t>::max)();
+  uint32_t flushBufSize = 8 * 1024;
   fmtlog::LogLevel flushLogLevel = fmtlog::OFF;
   std::mutex bufferMutex;
   std::vector<fmtlog::ThreadBuffer*> threadBuffers;
@@ -403,7 +404,7 @@ public:
                 fmt::string_view(membuf.data() + headerPos, membuf.size() - headerPos), bodyPos - headerPos);
         }
         membuf.push_back('\n');
-        if (membuf.size() >= 1024 * 8 || info.logLevel >= flushLogLevel) {
+        if (membuf.size() >= flushBufSize || info.logLevel >= flushLogLevel) {
           flushLogFile();
         }
       }
@@ -482,6 +483,11 @@ void fmtlogT<_>::setFlushDelay(int64_t ns) {
 template<int _>
 void fmtlogT<_>::flushOn(LogLevel flushLogLevel) {
   fmtlogDetailWrapper<>::impl.flushLogLevel = flushLogLevel;
+}
+
+template<int _>
+void fmtlogT<_>::setFlushBufSize(uint32_t bytes) {
+  fmtlogDetailWrapper<>::impl.flushBufSize = bytes;
 }
 
 template<int _>

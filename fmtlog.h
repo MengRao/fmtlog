@@ -117,6 +117,9 @@ public:
   // If current msg has level >= flushLogLevel, flush will be triggered
   static void flushOn(LogLevel flushLogLevel);
 
+  // If file buffer has more than specified bytes, flush will be triggered
+  static void setFlushBufSize(uint32_t bytes);
+
   // callback signature user can register
   // ns: nanosecond timestamp
   // level: logLevel
