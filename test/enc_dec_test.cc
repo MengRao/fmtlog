@@ -52,8 +52,8 @@ template<typename S, typename... Args>
 void test(const S& format, Args&&... args) {
   fmt::detail::check_format_string<Args...>(format);
   auto sv = fmt::to_string_view(format);
-  size_t formatted_size = fmt::formatted_size(sv, std::forward<Args>(args)...);
-  string ans = fmt::format(sv, std::forward<Args>(args)...);
+  size_t formatted_size = fmt::formatted_size(fmt::runtime(sv), std::forward<Args>(args)...);
+  string ans = fmt::format(fmt::runtime(sv), std::forward<Args>(args)...);
   assert(ans.size() == formatted_size);
 
   auto unnamed_format = fmtlog::unNameFormat<false>(sv, nullptr, args...);
@@ -90,8 +90,8 @@ int main() {
   float f = 55.2;
   uint16_t short_int = 2222;
 
-  test(FMT_STRING("test basic types: {}, {}, {}, {}, {}, {}, {}, {}, {:.1f}, {}, {}, {}, {}, {}, {}, {}"), cstring, p,
-       pcstring, "wow", 'a', 5, str, string_view(str), 1.34, ch, ch2, i, ri, d, f, short_int);
+  test("test basic types: {}, {}, {}, {}, {}, {}, {}, {}, {:.1f}, {}, {}, {}, {}, {}, {}, {}", cstring, p, pcstring,
+       "wow", 'a', 5, str, string_view(str), 1.34, ch, ch2, i, ri, d, f, short_int);
 
   test("test positional, {one}, {two:>5}, {three}, {four}, {0:.1f}", 5.012, "three"_a = 3, "two"_a = "two",
        "one"_a = string("one"), "four"_a = string("4"));

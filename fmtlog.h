@@ -383,7 +383,7 @@ private:
   { using type = Arg; };
 
 #if FMT_USE_NONTYPE_TEMPLATE_PARAMETERS
-  template<typename Arg, size_t N, fmt::detail::fixed_string<char, N> Str>
+  template<typename Arg, size_t N, fmt::detail_exported::fixed_string<char, N> Str>
   struct unNamedType<fmt::detail::statically_named_arg<Arg, char, N, Str>>
   { using type = Arg; };
 #endif
@@ -660,7 +660,7 @@ public:
       fmt::detail::check_format_string<Args...>(format);
     }
     fmt::string_view sv(format);
-    size_t formatted_size = fmt::formatted_size(sv, args...);
+    size_t formatted_size = fmt::formatted_size(fmt::runtime(sv), args...);
     size_t allocSize = formatted_size + 8 + 8;
     if (threadBuffer == nullptr) preallocate();
     do {
@@ -671,7 +671,7 @@ public:
             writePos += 8;
             *(int64_t*)writePos = tscns.rdtsc();
             writePos += 8;
-            fmt::format_to(writePos, sv, args...);
+            fmt::format_to(writePos, fmt::runtime(sv), args...);
           }))
         return;
     } while (FMTLOG_BLOCK);
