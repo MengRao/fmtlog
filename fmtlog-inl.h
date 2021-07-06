@@ -293,7 +293,10 @@ public:
   }
 
   void flushLogFile() {
-    if (outputFp) fwrite(membuf.data(), 1, membuf.size(), outputFp);
+    if (outputFp) {
+      fwrite(membuf.data(), 1, membuf.size(), outputFp);
+      if (!manageFp) fflush(outputFp);
+    }
     membuf.clear();
     nextFlushTime = (std::numeric_limits<int64_t>::max)();
   }
