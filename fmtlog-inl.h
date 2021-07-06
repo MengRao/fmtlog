@@ -25,6 +25,7 @@ SOFTWARE.
 #include <mutex>
 #include <thread>
 #include <limits>
+#include <ios>
 
 #ifdef _WIN32
 #include <windows.h>
