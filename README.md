@@ -120,11 +120,11 @@ In addition to raw pointers, fmtlog supports `std::shared_ptr` and `std::unique_
 ```
 
 Log header pattern can also be customized with `fmtlog::setHeaderPattern()` and the argument is a fmtlib format string with named arguments. The default header pattern is "{HMSf} {s:<16} {l}[{t:<6}] " (example: "15:46:19.149844 log_test.cc:43   INF[448050] "). All supported named arguments in header are as below:
-| name | meaning| example |
+| Name | Meaning| Example |
 | :------ | :-------: | :-----: |
 |`l`|Log level|INF|
 |`s`|File base name and line num|log_test.cc:48|
-|`g`|File path and line num|/home/raomeng/fmt/log_test.cc:48|
+|`g`|File path and line num|/home/raomeng/fmtlog/log_test.cc:48|
 |`t`|Thread id by default, can be reset by `fmt::setThreadName()`|main|
 |`a`|Weekday|Mon|
 |`b`|Month name|May|
