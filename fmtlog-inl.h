@@ -303,6 +303,7 @@ public:
   }
 
   void closeLogFile() {
+    if (membuf.size()) flushLogFile();
     if (manageFp) fclose(outputFp);
     outputFp = nullptr;
     manageFp = false;
