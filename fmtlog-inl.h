@@ -219,7 +219,15 @@ public:
   fmtlog::LogLevel flushLogLevel = fmtlog::OFF;
   std::mutex bufferMutex;
   std::vector<fmtlog::ThreadBuffer*> threadBuffers;
-  std::vector<fmtlog::ThreadBuffer*> bgThreadBuffers;
+  struct HeapNode
+  {
+    HeapNode(fmtlog::ThreadBuffer* buffer)
+      : tb(buffer) {}
+
+    fmtlog::ThreadBuffer* tb;
+    const fmtlog::SPSCVarQueueOPT<>::MsgHeader* header = nullptr;
+  };
+  std::vector<HeapNode> bgThreadBuffers;
   std::mutex logInfoMutex;
   std::vector<StaticLogInfo> logInfos;
   std::vector<StaticLogInfo> bgLogInfos;
@@ -331,7 +339,74 @@ public:
     if (thr.joinable()) thr.join();
   }
 
+  void handleLog(fmt::string_view threadName, const fmtlog::SPSCVarQueueOPT<>::MsgHeader* header) {
+    setArgVal<6>(threadName);
+    StaticLogInfo& info = bgLogInfos[header->logId];
+    const char* data = (const char*)(header + 1);
+    const char* end = (const char*)header + header->size;
+    int64_t tsc = *(int64_t*)data;
+    data += 8;
+    if (!info.formatToFn) { // log once
+      info.location = *(const char**)data;
+      data += 8;
+      info.processLocation();
+    }
+    int64_t ts = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);
+    // the date could go back when polling different threads
+    uint64_t t = (ts > midnightNs) ? (ts - midnightNs) : 0;
+    nanosecond.fromi(t % 1000000000);
+    t /= 1000000000;
+    second.fromi(t % 60);
+    t /= 60;
+    minute.fromi(t % 60);
+    t /= 60;
+    uint32_t h = t; // hour
+    if (h > 23) {
+      h %= 24;
+      resetDate();
+    }
+    hour.fromi(h);
+    setArgVal<14>(info.getBase());
+    setArgVal<15>(info.getLocation());
+    logLevel = "DBG INF WRN ERR OFF" + (info.logLevel << 2);
+
+    size_t headerPos = membuf.size();
+    fmt::detail::vformat_to(membuf, headerPattern, fmt::basic_format_args(args.data(), parttenArgSize));
+    size_t bodyPos = membuf.size();
+
+    if (info.formatToFn) {
+      info.formatToFn(info.formatString, data, membuf, info.argIdx, args);
+    }
+    else { // log once
+      membuf.append(fmt::string_view(data, end - data));
+    }
+
+    if (logCB && info.logLevel >= minCBLogLevel) {
+      logCB(ts, info.logLevel, info.getLocation(), info.basePos, threadName,
+            fmt::string_view(membuf.data() + headerPos, membuf.size() - headerPos), bodyPos - headerPos);
+    }
+    membuf.push_back('\n');
+    if (membuf.size() >= flushBufSize || info.logLevel >= flushLogLevel) {
+      flushLogFile();
+    }
+  }
+
+  void adjustHeap(size_t i) {
+    while (true) {
+      size_t min_i = i;
+      for (size_t ch = i * 2 + 1, end = std::min(ch + 2, bgThreadBuffers.size()); ch < end; ch++) {
+        auto h_ch = bgThreadBuffers[ch].header;
+        auto h_min = bgThreadBuffers[min_i].header;
+        if (h_ch && (!h_min || *(int64_t*)(h_ch + 1) < *(int64_t*)(h_min + 1))) min_i = ch;
+      }
+      if (min_i == i) break;
+      std::swap(bgThreadBuffers[i], bgThreadBuffers[min_i]);
+      i = min_i;
+    }
+  }
+
   void poll(bool forceFlush) {
+    int64_t tsc = fmtlogWrapper<>::impl.tscns.rdtsc();
     if (logInfos.size()) {
       std::unique_lock<std::mutex> lock(logInfoMutex);
       for (auto& info : logInfos) {
@@ -342,84 +417,47 @@ public:
     }
     if (threadBuffers.size()) {
       std::unique_lock<std::mutex> lock(bufferMutex);
-      bgThreadBuffers.insert(bgThreadBuffers.end(), threadBuffers.begin(), threadBuffers.end());
+      for (auto tb : threadBuffers) {
+        bgThreadBuffers.emplace_back(tb);
+      }
       threadBuffers.clear();
     }
 
     for (size_t i = 0; i < bgThreadBuffers.size(); i++) {
-      fmtlog::ThreadBuffer* tb = bgThreadBuffers[i];
-      setArgVal<6>(fmt::string_view(tb->name, tb->nameSize));
-      while (true) {
-        auto header = tb->varq.front();
-        if (!header) {
-          if (tb->shouldDeallocate) {
-            delete tb;
-
-            std::swap(bgThreadBuffers[i], bgThreadBuffers.back());
-            bgThreadBuffers.pop_back();
-            i--;
-          }
-          break;
-        }
-
-        if (header->logId >= bgLogInfos.size()) break; // it's just put into logInfos, handle it in the next poll
-        StaticLogInfo& info = bgLogInfos[header->logId];
-        char* end = (char*)header + header->size;
-        char* data = (char*)(header + 1);
-        if (!info.formatToFn) { // log once
-          info.location = *(const char**)data;
-          data += 8;
-          info.processLocation();
-        }
-        int64_t tsc = *(int64_t*)data;
-        data += 8;
-        int64_t ts = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);
-        // the date could go back when polling different threads
-        uint64_t t = (ts > midnightNs) ? (ts - midnightNs) : 0;
-        nanosecond.fromi(t % 1000000000);
-        t /= 1000000000;
-        second.fromi(t % 60);
-        t /= 60;
-        minute.fromi(t % 60);
-        t /= 60;
-        uint32_t h = t; // hour
-        if (h > 23) {
-          h %= 24;
-          resetDate();
-        }
-        hour.fromi(h);
-        setArgVal<14>(info.getBase());
-        setArgVal<15>(info.getLocation());
-        logLevel = "DBG INF WRN ERR OFF" + (info.logLevel << 2);
-
-        size_t headerPos = membuf.size();
-        fmt::detail::vformat_to(membuf, headerPattern, fmt::basic_format_args(args.data(), parttenArgSize));
-        size_t bodyPos = membuf.size();
-
-        if (info.formatToFn) {
-          info.formatToFn(info.formatString, data, membuf, info.argIdx, args);
-        }
-        else { // log once
-          membuf.append(fmt::string_view(data, end - data));
-        }
-        tb->varq.pop();
-
-        if (logCB && info.logLevel >= minCBLogLevel) {
-          logCB(ts, info.logLevel, info.getLocation(), info.basePos, fmt::string_view(tb->name, tb->nameSize),
-                fmt::string_view(membuf.data() + headerPos, membuf.size() - headerPos), bodyPos - headerPos);
-        }
-        membuf.push_back('\n');
-        if (membuf.size() >= flushBufSize || info.logLevel >= flushLogLevel) {
-          flushLogFile();
-        }
+      auto& node = bgThreadBuffers[i];
+      if (node.header) continue;
+      node.header = node.tb->varq.front();
+      if (!node.header && node.tb->shouldDeallocate) {
+        delete node.tb;
+        node = bgThreadBuffers.back();
+        bgThreadBuffers.pop_back();
+        i--;
       }
     }
+
+    if (bgThreadBuffers.empty()) return;
+
+    // build heap
+    for (int i = bgThreadBuffers.size() / 2; i >= 0; i--) {
+      adjustHeap(i);
+    }
+
+    while (true) {
+      auto h = bgThreadBuffers[0].header;
+      if (!h || h->logId >= bgLogInfos.size() || *(int64_t*)(h + 1) >= tsc) break;
+      auto tb = bgThreadBuffers[0].tb;
+      handleLog(fmt::string_view(tb->name, tb->nameSize), h);
+      tb->varq.pop();
+      bgThreadBuffers[0].header = tb->varq.front();
+      adjustHeap(0);
+    }
+
     if (membuf.size() == 0) return;
     if (!manageFp || forceFlush) {
       flushLogFile();
       return;
     }
-    int64_t now = fmtlogWrapper<>::impl.tscns.rdns();
+    int64_t now = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);
     if (now > nextFlushTime) {
       flushLogFile();
     }

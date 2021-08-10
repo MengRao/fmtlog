@@ -24,14 +24,15 @@ void threadRun(int id) {
     ;
   for (int i = 0; i < 100000; i++) {
     logi("msg : {}, i: {}", id, i);
-    if (i % 10000 == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    if (i % 1000 == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 }
 
 int main() {
   fmtlog::setLogCB(logcb, fmtlog::INF);
-  fmtlog::closeLogFile();
-  fmtlog::setHeaderPattern("");
+  // fmtlog::closeLogFile();
+  fmtlog::setLogFile("multithread.txt");
+  // fmtlog::setHeaderPattern("");
   vector<thread> thrs;
   fmtlog::startPollingThread(1);
   for (int i = 0; i < thr_cnt; i++) {

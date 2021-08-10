@@ -177,8 +177,8 @@ private:
 
   using Context = fmt::format_context;
   using MemoryBuffer = fmt::basic_memory_buffer<char, 10000>;
-  typedef char* (*FormatToFn)(fmt::string_view format, char* data, MemoryBuffer& out, int& argIdx,
-                              std::vector<fmt::basic_format_arg<Context>>& args);
+  typedef const char* (*FormatToFn)(fmt::string_view format, const char* data, MemoryBuffer& out, int& argIdx,
+                                    std::vector<fmt::basic_format_arg<Context>>& args);
 
   static void registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
                               fmt::string_view fmtString);
@@ -238,7 +238,7 @@ private:
       return true;
     }
 
-    MsgHeader* front() {
+    const MsgHeader* front() {
       uint32_t size = blk[read_idx].size;
       if (size == 1) { // wrap around
         read_idx = 0;
@@ -475,12 +475,14 @@ private:
   }
 
   template<bool ValueOnly, size_t Idx, size_t DestructIdx>
-  static inline char* decodeArgs(char* in, fmt::basic_format_arg<Context>* args, char** destruct_args) {
+  static inline const char* decodeArgs(const char* in, fmt::basic_format_arg<Context>* args,
+                                       const char** destruct_args) {
     return in;
   }
 
   template<bool ValueOnly, size_t Idx, size_t DestructIdx, typename Arg, typename... Args>
-  static inline char* decodeArgs(char* in, fmt::basic_format_arg<Context>* args, char** destruct_args) {
+  static inline const char* decodeArgs(const char* in, fmt::basic_format_arg<Context>* args,
+                                       const char** destruct_args) {
     using namespace fmtlogdetail;
     using ArgType = fmt::remove_cvref_t<Arg>;
     if constexpr (isNamedArg<ArgType>()) {
@@ -529,10 +531,10 @@ private:
   }
 
   template<size_t DestructIdx>
-  static inline void destructArgs(char** destruct_args) {}
+  static inline void destructArgs(const char** destruct_args) {}
 
   template<size_t DestructIdx, typename Arg, typename... Args>
-  static inline void destructArgs(char** destruct_args) {
+  static inline void destructArgs(const char** destruct_args) {
     using ArgType = fmt::remove_cvref_t<Arg>;
     if constexpr (isNamedArg<ArgType>()) {
       destructArgs<DestructIdx, typename unNamedType<ArgType>::type, Args...>(destruct_args);
@@ -547,12 +549,12 @@ private:
   }
 
   template<typename... Args>
-  static char* formatTo(fmt::string_view format, char* data, MemoryBuffer& out, int& argIdx,
-                        std::vector<fmt::basic_format_arg<Context>>& args) {
+  static const char* formatTo(fmt::string_view format, const char* data, MemoryBuffer& out, int& argIdx,
+                              std::vector<fmt::basic_format_arg<Context>>& args) {
     constexpr size_t num_args = sizeof...(Args);
     constexpr size_t num_dtors = fmt::detail::count<needCallDtor<Args>()...>();
-    char* dtor_args[std::max(num_dtors, (size_t)1)];
-    char* ret;
+    const char* dtor_args[std::max(num_dtors, (size_t)1)];
+    const char* ret;
     if (argIdx < 0) {
       argIdx = args.size();
       args.resize(argIdx + num_args);
@@ -667,9 +669,9 @@ public:
       if (threadBuffer->varq.tryPush(allocSize, [&](typename SPSCVarQueueOPT<>::MsgHeader* header) {
             header->logId = (uint32_t)level;
             char* writePos = (char*)(header + 1);
-            *(const char**)writePos = location;
-            writePos += 8;
             *(int64_t*)writePos = tscns.rdtsc();
+            writePos += 8;
+            *(const char**)writePos = location;
             writePos += 8;
             fmt::format_to(writePos, fmt::runtime(sv), args...);
           }))

@@ -61,7 +61,7 @@ void test(const S& format, Args&&... args) {
   size_t cstringSizes[1000];
   char buf[1024];
   int allocSize = fmtlog::getArgSizes<0>(cstringSizes, args...);
-  char* ret = fmtlog::encodeArgs<0>(cstringSizes, buf, std::forward<Args>(args)...);
+  const char* ret = fmtlog::encodeArgs<0>(cstringSizes, buf, std::forward<Args>(args)...);
   // fmt::print("=========\n");
   assert(ret - buf == allocSize);
   fmtlog::MemoryBuffer buffer;
