@@ -5,7 +5,7 @@ fmtlog is a performant asynchronous logging library using [fmt](https://github.c
 * Faster - lower runtime latency than [NanoLog](https://github.com/PlatformLab/NanoLog) and higher throughput than [spdlog](https://github.com/gabime/spdlog) (see [Performance](https://github.com/MengRao/fmtlog#Performance) below).
 * Headers only or compiled
 * Feature rich formatting on top of excellent fmt library.
-* Asynchronous multi-threaded logging in time order and can also be used synchronously in single thread.
+* Asynchronous multi-threaded logging **in time order** and can also be used synchronously in single thread.
 * Custom formatting
 * Custom handling - user can set a callback function to handle log msgs in addition to writing into file.
 * Log filtering - log levels can be modified in runtime as well as in compile time.
