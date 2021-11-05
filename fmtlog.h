@@ -570,7 +570,7 @@ private:
   }
 
   template<bool Reorder, typename... Args>
-  static constexpr fmt::string_view unNameFormat(fmt::string_view in, uint32_t* reorderIdx, const Args&... args) {
+  static fmt::string_view unNameFormat(fmt::string_view in, uint32_t* reorderIdx, const Args&... args) {
     constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
     if constexpr (num_named_args == 0) {
       return in;
