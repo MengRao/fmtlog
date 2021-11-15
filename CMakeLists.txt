@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 project(fmtlog CXX)
 
 if(MSVC)
-    add_compile_options(/O2 /std:c++latest)
+    add_compile_options(/std:c++latest)
 else()
     add_compile_options(-Wall -O3 -std=c++17)
     link_libraries(pthread)
