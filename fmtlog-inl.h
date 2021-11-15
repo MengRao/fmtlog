@@ -28,6 +28,7 @@ SOFTWARE.
 #include <ios>
 
 #ifdef _WIN32
+#define NOMINMAX
 #include <windows.h>
 #include <processthreadsapi.h>
 #else
