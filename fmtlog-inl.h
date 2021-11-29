@@ -214,6 +214,7 @@ public:
   bool shouldDeallocateHeader = false;
   FILE* outputFp = nullptr;
   bool manageFp = false;
+  size_t fpos = 0; // file position of membuf, used only when manageFp == true
   int64_t flushDelay;
   int64_t nextFlushTime = (std::numeric_limits<int64_t>::max)();
   uint32_t flushBufSize = 8 * 1024;
@@ -306,6 +307,8 @@ public:
     if (outputFp) {
       fwrite(membuf.data(), 1, membuf.size(), outputFp);
       if (!manageFp) fflush(outputFp);
+      else
+        fpos += membuf.size();
     }
     membuf.clear();
     nextFlushTime = (std::numeric_limits<int64_t>::max)();
@@ -384,7 +387,8 @@ public:
 
     if (logCB && info.logLevel >= minCBLogLevel) {
       logCB(ts, info.logLevel, info.getLocation(), info.basePos, threadName,
-            fmt::string_view(membuf.data() + headerPos, membuf.size() - headerPos), bodyPos - headerPos);
+            fmt::string_view(membuf.data() + headerPos, membuf.size() - headerPos), bodyPos - headerPos,
+            fpos + headerPos);
     }
     membuf.push_back('\n');
     if (membuf.size() >= flushBufSize || info.logLevel >= flushLogLevel) {
@@ -502,6 +506,7 @@ void fmtlogT<_>::setLogFile(const char* filename, bool truncate) {
     throw std::ios_base::failure(err);
   }
   setbuf(newFp, nullptr);
+  d.fpos = ftell(newFp);
 
   closeLogFile();
   d.outputFp = newFp;
@@ -514,7 +519,10 @@ void fmtlogT<_>::setLogFile(FILE* fp, bool manageFp) {
   closeLogFile();
   if (manageFp) {
     setbuf(fp, nullptr);
+    d.fpos = ftell(fp);
   }
+  else
+    d.fpos = 0;
   d.outputFp = fp;
   d.manageFp = manageFp;
 }

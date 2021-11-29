@@ -7,8 +7,8 @@
 void runBenchmark();
 
 void logcb(int64_t ns, fmtlog::LogLevel level, fmt::string_view location, size_t basePos, fmt::string_view threadName,
-           fmt::string_view msg, size_t bodyPos) {
-  fmt::print("callback full msg: {}\n", msg);
+           fmt::string_view msg, size_t bodyPos, size_t logFilePos) {
+  fmt::print("callback full msg: {}, logFilePos: {}\n", msg, logFilePos);
   msg.remove_prefix(bodyPos);
   fmt::print("callback msg body: {}\n", msg);
 }
@@ -62,6 +62,11 @@ int main() {
 
   fmtlog::setLogCB(logcb, fmtlog::WRN);
   logw("This msg will be called back");
+
+  fmtlog::setLogFile("/tmp/wow", false);
+  for (int i = 0; i < 10; i++) {
+    logw("test logfilepos: {}.", i);
+  }
 
   fmtlog::poll();
   runBenchmark();

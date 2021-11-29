@@ -12,7 +12,7 @@ size_t msg_cnt = 0;
 size_t cb_size = 0;
 
 void logcb(int64_t ns, fmtlog::LogLevel level, fmt::string_view location, size_t basePos, fmt::string_view threadName,
-           fmt::string_view msg, size_t bodyPos) {
+           fmt::string_view msg, size_t bodyPos, size_t logFilePos) {
   msg_cnt++;
   cb_size += msg.size();
 }
