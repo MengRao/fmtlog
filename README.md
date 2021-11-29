@@ -171,8 +171,9 @@ The signiture of callback function is:
   // threadName: thread id or the name user set with setThreadName
   // msg: full log msg with header
   // bodyPos: log body index in the msg
+  // logFilePos: log file position of this msg
   typedef void (*LogCBFn)(int64_t ns, LogLevel level, fmt::string_view location, size_t basePos,
-                          fmt::string_view threadName, fmt::string_view msg, size_t bodyPos);
+                          fmt::string_view threadName, fmt::string_view msg, size_t bodyPos, size_t logFilePos);
 ```
 
 ## Performance
