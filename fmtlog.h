@@ -75,6 +75,7 @@ struct UnrefPtr<std::unique_ptr<Arg, D>> : std::true_type
 template<typename Arg>
 struct UnrefPtr<Arg*> : std::true_type
 { using type = Arg; };
+
 }; // namespace fmtlogdetail
 
 template<int __ = 0>
@@ -101,8 +102,8 @@ public:
   // Set the file for logging
   static void setLogFile(const char* filename, bool truncate = false);
 
-  // Set an existing FILE* for logging, if manageFp is false fmtlog will not buffer log internally and will not close
-  // the FILE*
+  // Set an existing FILE* for logging, if manageFp is false fmtlog will not buffer log internally
+  // and will not close the FILE*
   static void setLogFile(FILE* fp, bool manageFp = false);
 
   // Collect log msgs from all threads and write to log file
@@ -130,7 +131,8 @@ public:
   // bodyPos: log body index in the msg
   // logFilePos: log file position of this msg
   typedef void (*LogCBFn)(int64_t ns, LogLevel level, fmt::string_view location, size_t basePos,
-                          fmt::string_view threadName, fmt::string_view msg, size_t bodyPos, size_t logFilePos);
+                          fmt::string_view threadName, fmt::string_view msg, size_t bodyPos,
+                          size_t logFilePos);
 
   // Set a callback function for all log msgs with a mininum log level
   static void setLogCB(LogCBFn cb, LogLevel minCBLogLevel);
@@ -158,46 +160,23 @@ public:
   // Stop the polling thread
   static void stopPollingThread();
 
-private:
-  fmtlogT() { init(); }
-
-  void init() {
-    if (!inited) {
-      inited = true;
-      tscns.init();
-      currentLogLevel = INF;
-    }
-  }
-
-  template<int>
-  friend class fmtlogDetailT;
-  template<int>
-  friend struct fmtlogWrapper;
-  template<typename S, typename... Args>
-  friend void test(const S& format, Args&&...);
-
-  using Context = fmt::format_context;
-  using MemoryBuffer = fmt::basic_memory_buffer<char, 10000>;
-  typedef const char* (*FormatToFn)(fmt::string_view format, const char* data, MemoryBuffer& out, int& argIdx,
-                                    std::vector<fmt::basic_format_arg<Context>>& args);
-
-  static void registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
-                              fmt::string_view fmtString);
-
   // https://github.com/MengRao/SPSC_Queue
-  template<uint32_t Bytes = 1 << 20>
   class SPSCVarQueueOPT
   {
   public:
     struct MsgHeader
     {
+      inline void push(uint32_t sz) { *(volatile uint32_t*)&size = sz + sizeof(MsgHeader); }
+
       uint32_t size;
       uint32_t logId;
     };
-    static constexpr uint32_t BLK_CNT = Bytes / sizeof(MsgHeader);
+    static constexpr uint32_t BLK_CNT = (1 << 20) / sizeof(MsgHeader);
 
-    MsgHeader* alloc(uint32_t size_) {
-      size = size_ + sizeof(MsgHeader);
+    MsgHeader* allocMsg(uint32_t size);
+
+    MsgHeader* alloc(uint32_t size) {
+      size += sizeof(MsgHeader);
       uint32_t blk_sz = (size + sizeof(MsgHeader) - 1) / sizeof(MsgHeader);
       if (blk_sz >= free_write_cnt) {
         uint32_t read_idx_cache = *(volatile uint32_t*)&read_idx;
@@ -205,7 +184,6 @@ private:
           free_write_cnt = BLK_CNT - write_idx;
           if (blk_sz >= free_write_cnt && read_idx_cache != 0) { // wrap around
             blk[0].size = 0;
-            std::atomic_thread_fence(std::memory_order_release);
             blk[write_idx].size = 1;
             write_idx = 0;
             free_write_cnt = read_idx_cache;
@@ -218,28 +196,14 @@ private:
           return nullptr;
         }
       }
-      return &blk[write_idx];
-    }
-
-    void push() {
-      uint32_t blk_sz = (size + sizeof(MsgHeader) - 1) / sizeof(MsgHeader);
-      blk[write_idx + blk_sz].size = 0;
-      std::atomic_thread_fence(std::memory_order_release);
-      blk[write_idx].size = size;
+      MsgHeader* ret = &blk[write_idx];
       write_idx += blk_sz;
       free_write_cnt -= blk_sz;
+      blk[write_idx].size = 0;
+      return ret;
     }
 
-    template<typename Writer>
-    bool tryPush(uint32_t size, Writer writer) {
-      MsgHeader* header = alloc(size);
-      if (!header) return false;
-      writer(header);
-      push();
-      return true;
-    }
-
-    const MsgHeader* front() {
+    inline const MsgHeader* front() {
       uint32_t size = blk[read_idx].size;
       if (size == 1) { // wrap around
         read_idx = 0;
@@ -249,33 +213,22 @@ private:
       return &blk[read_idx];
     }
 
-    void pop() {
+    inline void pop() {
       uint32_t blk_sz = (blk[read_idx].size + sizeof(MsgHeader) - 1) / sizeof(MsgHeader);
       *(volatile uint32_t*)&read_idx = read_idx + blk_sz;
     }
 
-    template<typename Reader>
-    bool tryPop(Reader reader) {
-      MsgHeader* header = front();
-      if (!header) return false;
-      reader(header);
-      pop();
-      return true;
-    }
-
   private:
     alignas(64) MsgHeader blk[BLK_CNT] = {};
-
-    alignas(128) uint32_t write_idx = 0;
+    uint32_t write_idx = 0;
     uint32_t free_write_cnt = BLK_CNT;
-    uint32_t size;
 
     alignas(128) uint32_t read_idx = 0;
   };
 
   struct ThreadBuffer
   {
-    SPSCVarQueueOPT<> varq;
+    SPSCVarQueueOPT varq;
     bool shouldDeallocate = false;
     char name[32];
     size_t nameSize;
@@ -294,7 +247,8 @@ private:
       }
       else {
 #ifdef _WIN32
-        return calibrate(1000000 * 100); // wait more time as Windows' system time is in 100ns precision
+        return calibrate(1000000 *
+                         100); // wait more time as Windows' system time is in 100ns precision
 #else
         return calibrate(1000000 * 10); //
 #endif
@@ -355,18 +309,33 @@ private:
 
     void adjustOffset() { ns_offset = base_ns - (int64_t)(base_tsc * tsc_ghz_inv); }
 
-    alignas(64) double tsc_ghz_inv; // make sure tsc_ghz_inv and ns_offset are on the same cache line
+    alignas(64) double tsc_ghz_inv;
     int64_t ns_offset;
     int64_t base_tsc;
     int64_t base_ns;
   };
 
-  bool inited = false;
+  void init() {
+    tscns.init();
+    currentLogLevel = INF;
+  }
 
-public:
+  using Context = fmt::format_context;
+  using MemoryBuffer = fmt::basic_memory_buffer<char, 10000>;
+  typedef const char* (*FormatToFn)(fmt::string_view format, const char* data, MemoryBuffer& out,
+                                    int& argIdx, std::vector<fmt::basic_format_arg<Context>>& args);
+
+  static void registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
+                              fmt::string_view fmtString);
+
+  static void vformat_to(MemoryBuffer& out, fmt::string_view fmt, fmt::format_args args);
+
+  static size_t formatted_size(fmt::string_view fmt, fmt::format_args args);
+
+  static void vformat_to(char* out, fmt::string_view fmt, fmt::format_args args);
+
   TSCNS tscns;
 
-private:
   volatile LogLevel currentLogLevel;
   static FAST_THREAD_LOCAL ThreadBuffer* threadBuffer;
 
@@ -550,8 +519,8 @@ private:
   }
 
   template<typename... Args>
-  static const char* formatTo(fmt::string_view format, const char* data, MemoryBuffer& out, int& argIdx,
-                              std::vector<fmt::basic_format_arg<Context>>& args) {
+  static const char* formatTo(fmt::string_view format, const char* data, MemoryBuffer& out,
+                              int& argIdx, std::vector<fmt::basic_format_arg<Context>>& args) {
     constexpr size_t num_args = sizeof...(Args);
     constexpr size_t num_dtors = fmt::detail::count<needCallDtor<Args>()...>();
     const char* dtor_args[std::max(num_dtors, (size_t)1)];
@@ -564,7 +533,7 @@ private:
     else {
       ret = decodeArgs<true, 0, 0, Args...>(data, args.data() + argIdx, dtor_args);
     }
-    fmt::detail::vformat_to(out, format, fmt::basic_format_args(args.data() + argIdx, num_args));
+    vformat_to(out, format, fmt::basic_format_args(args.data() + argIdx, num_args));
     destructArgs<0, Args...>(dtor_args);
 
     return ret;
@@ -642,17 +611,17 @@ public:
     }
     constexpr size_t num_cstring = fmt::detail::count<isCstring<Args>()...>();
     size_t cstringSizes[std::max(num_cstring, (size_t)1)];
-    size_t allocSize = getArgSizes<0>(cstringSizes, args...) + 8;
+    size_t alloc_size = 8 + getArgSizes<0>(cstringSizes, args...);
     if (threadBuffer == nullptr) preallocate();
     do {
-      if (threadBuffer->varq.tryPush(allocSize, [&](typename SPSCVarQueueOPT<>::MsgHeader* header) {
-            header->logId = logId;
-            char* writePos = (char*)(header + 1);
-            *(int64_t*)writePos = tsc;
-            writePos += 8;
-            encodeArgs<0>(cstringSizes, writePos, std::forward<Args>(args)...);
-          }))
-        return;
+      auto header = threadBuffer->varq.allocMsg(alloc_size);
+      if (!header) continue;
+      header->logId = logId;
+      char* out = (char*)(header + 1);
+      *(int64_t*)out = tsc;
+      out += 8;
+      encodeArgs<0>(cstringSizes, out, std::forward<Args>(args)...);
+      header->push(alloc_size);
     } while (FMTLOG_BLOCK);
   }
 
@@ -663,20 +632,21 @@ public:
       fmt::detail::check_format_string<Args...>(format);
     }
     fmt::string_view sv(format);
-    size_t formatted_size = fmt::formatted_size(fmt::runtime(sv), args...);
-    size_t allocSize = formatted_size + 8 + 8;
+    auto&& fmt_args = fmt::make_format_args(args...);
+    size_t fmt_size = formatted_size(sv, fmt_args);
+    size_t alloc_size = 8 + 8 + fmt_size;
     if (threadBuffer == nullptr) preallocate();
     do {
-      if (threadBuffer->varq.tryPush(allocSize, [&](typename SPSCVarQueueOPT<>::MsgHeader* header) {
-            header->logId = (uint32_t)level;
-            char* writePos = (char*)(header + 1);
-            *(int64_t*)writePos = tscns.rdtsc();
-            writePos += 8;
-            *(const char**)writePos = location;
-            writePos += 8;
-            fmt::format_to(writePos, fmt::runtime(sv), args...);
-          }))
-        return;
+      auto header = threadBuffer->varq.allocMsg(alloc_size);
+      if (!header) continue;
+      header->logId = (uint32_t)level;
+      char* out = (char*)(header + 1);
+      *(int64_t*)out = tscns.rdtsc();
+      out += 8;
+      *(const char**)out = location;
+      out += 8;
+      vformat_to(out, sv, fmt_args);
+      header->push(alloc_size);
     } while (FMTLOG_BLOCK);
   }
 };

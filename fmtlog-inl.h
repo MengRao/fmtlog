@@ -227,7 +227,7 @@ public:
       : tb(buffer) {}
 
     fmtlog::ThreadBuffer* tb;
-    const fmtlog::SPSCVarQueueOPT<>::MsgHeader* header = nullptr;
+    const fmtlog::SPSCVarQueueOPT::MsgHeader* header = nullptr;
   };
   std::vector<HeapNode> bgThreadBuffers;
   std::mutex logInfoMutex;
@@ -343,7 +343,7 @@ public:
     if (thr.joinable()) thr.join();
   }
 
-  void handleLog(fmt::string_view threadName, const fmtlog::SPSCVarQueueOPT<>::MsgHeader* header) {
+  void handleLog(fmt::string_view threadName, const fmtlog::SPSCVarQueueOPT::MsgHeader* header) {
     setArgVal<6>(threadName);
     StaticLogInfo& info = bgLogInfos[header->logId];
     const char* data = (const char*)(header + 1);
@@ -375,7 +375,7 @@ public:
     logLevel = (const char*)"DBG INF WRN ERR OFF" + (info.logLevel << 2);
 
     size_t headerPos = membuf.size();
-    fmt::detail::vformat_to(membuf, headerPattern, fmt::basic_format_args(args.data(), parttenArgSize));
+    fmtlog::vformat_to(membuf, headerPattern, fmt::basic_format_args(args.data(), parttenArgSize));
     size_t bodyPos = membuf.size();
 
     if (info.formatToFn) {
@@ -490,6 +490,29 @@ void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* loc
   if (logId) return;
   logId = d.logInfos.size() + d.bgLogInfos.size();
   d.logInfos.emplace_back(fn, location, level, fmtString);
+}
+
+template<int _>
+void fmtlogT<_>::vformat_to(fmtlog::MemoryBuffer& out, fmt::string_view fmt,
+                            fmt::format_args args) {
+  fmt::detail::vformat_to(out, fmt, args);
+}
+
+template<int _>
+size_t fmtlogT<_>::formatted_size(fmt::string_view fmt, fmt::format_args args) {
+  auto buf = fmt::detail::counting_buffer<>();
+  fmt::detail::vformat_to(buf, fmt, args);
+  return buf.count();
+}
+
+template<int _>
+void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args args) {
+  fmt::vformat_to(out, fmt, args);
+}
+
+template<int _>
+fmtlogT<_>::SPSCVarQueueOPT::MsgHeader* fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) {
+  return alloc(size);
 }
 
 template<int _>
