@@ -511,7 +511,8 @@ void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args ar
 }
 
 template<int _>
-fmtlogT<_>::SPSCVarQueueOPT::MsgHeader* fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) {
+typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader*
+fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) {
   return alloc(size);
 }
 
