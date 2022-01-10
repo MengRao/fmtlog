@@ -483,8 +483,8 @@ template<int _>
 fmtlogDetailT<> fmtlogDetailWrapper<_>::impl;
 
 template<int _>
-void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
-                                 fmt::string_view fmtString) {
+void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location,
+                                 LogLevel level, fmt::string_view fmtString) noexcept {
   auto& d = fmtlogDetailWrapper<>::impl;
   std::lock_guard<std::mutex> lock(d.logInfoMutex);
   if (logId) return;
@@ -494,30 +494,30 @@ void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* loc
 
 template<int _>
 void fmtlogT<_>::vformat_to(fmtlog::MemoryBuffer& out, fmt::string_view fmt,
-                            fmt::format_args args) {
+                            fmt::format_args args) noexcept {
   fmt::detail::vformat_to(out, fmt, args);
 }
 
 template<int _>
-size_t fmtlogT<_>::formatted_size(fmt::string_view fmt, fmt::format_args args) {
+size_t fmtlogT<_>::formatted_size(fmt::string_view fmt, fmt::format_args args) noexcept {
   auto buf = fmt::detail::counting_buffer<>();
   fmt::detail::vformat_to(buf, fmt, args);
   return buf.count();
 }
 
 template<int _>
-void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args args) {
+void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args args) noexcept {
   fmt::vformat_to(out, fmt, args);
 }
 
 template<int _>
 typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader*
-fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) {
+fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) noexcept {
   return alloc(size);
 }
 
 template<int _>
-void fmtlogT<_>::preallocate() {
+void fmtlogT<_>::preallocate() noexcept {
   fmtlogDetailWrapper<>::impl.preallocate();
 }
 
@@ -552,38 +552,38 @@ void fmtlogT<_>::setLogFile(FILE* fp, bool manageFp) {
 }
 
 template<int _>
-void fmtlogT<_>::setFlushDelay(int64_t ns) {
+void fmtlogT<_>::setFlushDelay(int64_t ns) noexcept {
   fmtlogDetailWrapper<>::impl.flushDelay = ns;
 }
 
 template<int _>
-void fmtlogT<_>::flushOn(LogLevel flushLogLevel) {
+void fmtlogT<_>::flushOn(LogLevel flushLogLevel) noexcept {
   fmtlogDetailWrapper<>::impl.flushLogLevel = flushLogLevel;
 }
 
 template<int _>
-void fmtlogT<_>::setFlushBufSize(uint32_t bytes) {
+void fmtlogT<_>::setFlushBufSize(uint32_t bytes) noexcept {
   fmtlogDetailWrapper<>::impl.flushBufSize = bytes;
 }
 
 template<int _>
-void fmtlogT<_>::closeLogFile() {
+void fmtlogT<_>::closeLogFile() noexcept {
   fmtlogDetailWrapper<>::impl.closeLogFile();
 }
 
 template<int _>
-void fmtlogT<_>::poll(bool forceFlush) {
+void fmtlogT<_>::poll(bool forceFlush) noexcept {
   fmtlogDetailWrapper<>::impl.poll(forceFlush);
 }
 
 template<int _>
-void fmtlogT<_>::setThreadName(const char* name) {
+void fmtlogT<_>::setThreadName(const char* name) noexcept {
   preallocate();
   threadBuffer->nameSize = fmt::format_to_n(threadBuffer->name, sizeof(fmtlog::threadBuffer->name), "{}", name).size;
 }
 
 template<int _>
-void fmtlogT<_>::setLogCB(LogCBFn cb, LogLevel minCBLogLevel_) {
+void fmtlogT<_>::setLogCB(LogCBFn cb, LogLevel minCBLogLevel_) noexcept {
   auto& d = fmtlogDetailWrapper<>::impl;
   d.logCB = cb;
   d.minCBLogLevel = minCBLogLevel_;
@@ -595,17 +595,17 @@ void fmtlogT<_>::setHeaderPattern(const char* pattern) {
 }
 
 template<int _>
-void fmtlogT<_>::startPollingThread(int64_t pollInterval) {
+void fmtlogT<_>::startPollingThread(int64_t pollInterval) noexcept {
   fmtlogDetailWrapper<>::impl.startPollingThread(pollInterval);
 }
 
 template<int _>
-void fmtlogT<_>::stopPollingThread() {
+void fmtlogT<_>::stopPollingThread() noexcept {
   fmtlogDetailWrapper<>::impl.stopPollingThread();
 }
 
 template<int _>
-void fmtlogT<_>::setTscGhz(double tscGhz) {
+void fmtlogT<_>::setTscGhz(double tscGhz) noexcept {
   fmtlogWrapper<>::impl.tscns.init(tscGhz);
 }
 

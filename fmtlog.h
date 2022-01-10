@@ -94,10 +94,10 @@ public:
   // If you know the exact tsc frequency(in ghz) in the os, tell fmtlog!
   // But how can I know the frequency? Check below link(for Linux only):
   // https://github.com/MengRao/tscns#i-dont-wanna-wait-a-long-time-for-calibration-can-i-cheat
-  static void setTscGhz(double tscGhz);
+  static void setTscGhz(double tscGhz) noexcept;
 
   // Preallocate thread queue for current thread
-  static void preallocate();
+  static void preallocate() noexcept;
 
   // Set the file for logging
   static void setLogFile(const char* filename, bool truncate = false);
@@ -109,17 +109,17 @@ public:
   // Collect log msgs from all threads and write to log file
   // If forceFlush = true, internal file buffer is flushed
   // User need to call poll() repeatedly if startPollingThread is not used
-  static void poll(bool forceFlush = false);
+  static void poll(bool forceFlush = false) noexcept;
 
   // Set flush delay in nanosecond
   // If there's msg older than ns in the buffer, flush will be triggered
-  static void setFlushDelay(int64_t ns);
+  static void setFlushDelay(int64_t ns) noexcept;
 
   // If current msg has level >= flushLogLevel, flush will be triggered
-  static void flushOn(LogLevel flushLogLevel);
+  static void flushOn(LogLevel flushLogLevel) noexcept;
 
   // If file buffer has more than specified bytes, flush will be triggered
-  static void setFlushBufSize(uint32_t bytes);
+  static void setFlushBufSize(uint32_t bytes) noexcept;
 
   // callback signature user can register
   // ns: nanosecond timestamp
@@ -135,30 +135,30 @@ public:
                           size_t logFilePos);
 
   // Set a callback function for all log msgs with a mininum log level
-  static void setLogCB(LogCBFn cb, LogLevel minCBLogLevel);
+  static void setLogCB(LogCBFn cb, LogLevel minCBLogLevel) noexcept;
 
   // Close the log file and subsequent msgs will not be written into the file,
   // but callback function can still be used
-  static void closeLogFile();
+  static void closeLogFile() noexcept;
 
   // Set log header pattern with fmt named arguments
   static void setHeaderPattern(const char* pattern);
 
   // Set a name for current thread, it'll be shown in {t} part in header pattern
-  static void setThreadName(const char* name);
+  static void setThreadName(const char* name) noexcept;
 
   // Set current log level, lower level log msgs will be discarded
-  static inline void setLogLevel(LogLevel logLevel);
+  static inline void setLogLevel(LogLevel logLevel) noexcept;
 
   // Get current log level
-  static inline LogLevel getLogLevel();
+  static inline LogLevel getLogLevel() noexcept;
 
   // Run a polling thread in the background with a polling interval
   // Note that user must not call poll() himself when the thread is running
-  static void startPollingThread(int64_t pollInterval = 1000000);
+  static void startPollingThread(int64_t pollInterval = 1000000) noexcept;
 
   // Stop the polling thread
-  static void stopPollingThread();
+  static void stopPollingThread() noexcept;
 
   // https://github.com/MengRao/SPSC_Queue
   class SPSCVarQueueOPT
@@ -173,7 +173,7 @@ public:
     };
     static constexpr uint32_t BLK_CNT = (1 << 20) / sizeof(MsgHeader);
 
-    MsgHeader* allocMsg(uint32_t size);
+    MsgHeader* allocMsg(uint32_t size) noexcept;
 
     MsgHeader* alloc(uint32_t size) {
       size += sizeof(MsgHeader);
@@ -323,16 +323,17 @@ public:
   using Context = fmt::format_context;
   using MemoryBuffer = fmt::basic_memory_buffer<char, 10000>;
   typedef const char* (*FormatToFn)(fmt::string_view format, const char* data, MemoryBuffer& out,
-                                    int& argIdx, std::vector<fmt::basic_format_arg<Context>>& args);
+                                    int& argIdx,
+                                    std::vector<fmt::basic_format_arg<Context>>& args) noexcept;
 
   static void registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
-                              fmt::string_view fmtString);
+                              fmt::string_view fmtString) noexcept;
 
-  static void vformat_to(MemoryBuffer& out, fmt::string_view fmt, fmt::format_args args);
+  static void vformat_to(MemoryBuffer& out, fmt::string_view fmt, fmt::format_args args) noexcept;
 
-  static size_t formatted_size(fmt::string_view fmt, fmt::format_args args);
+  static size_t formatted_size(fmt::string_view fmt, fmt::format_args args) noexcept;
 
-  static void vformat_to(char* out, fmt::string_view fmt, fmt::format_args args);
+  static void vformat_to(char* out, fmt::string_view fmt, fmt::format_args args) noexcept;
 
   TSCNS tscns;
 
@@ -520,7 +521,8 @@ public:
 
   template<typename... Args>
   static const char* formatTo(fmt::string_view format, const char* data, MemoryBuffer& out,
-                              int& argIdx, std::vector<fmt::basic_format_arg<Context>>& args) {
+                              int& argIdx,
+                              std::vector<fmt::basic_format_arg<Context>>& args) noexcept {
     constexpr size_t num_args = sizeof...(Args);
     constexpr size_t num_dtors = fmt::detail::count<needCallDtor<Args>()...>();
     const char* dtor_args[std::max(num_dtors, (size_t)1)];
@@ -599,7 +601,7 @@ public:
 
 public:
   template<typename S, typename... Args>
-  inline void log(uint32_t& logId, int64_t tsc, const char* location, LogLevel level, const S& format, Args&&... args) {
+  inline void log(uint32_t& logId, int64_t tsc, const char* location, LogLevel level, const S& format, Args&&... args) noexcept {
     using namespace fmtlogdetail;
     constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
     if constexpr (num_named_args == 0) {
@@ -626,7 +628,8 @@ public:
   }
 
   template<typename S, typename... Args>
-  inline void logOnce(const char* location, LogLevel level, const S& format, Args&&... args) {
+  inline void logOnce(const char* location, LogLevel level, const S& format,
+                      Args&&... args) noexcept {
     constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
     if constexpr (num_named_args == 0) {
       fmt::detail::check_format_string<Args...>(format);
@@ -664,12 +667,12 @@ template<int _>
 fmtlog fmtlogWrapper<_>::impl;
 
 template<int _>
-inline void fmtlogT<_>::setLogLevel(LogLevel logLevel) {
+inline void fmtlogT<_>::setLogLevel(LogLevel logLevel) noexcept {
   fmtlogWrapper<>::impl.currentLogLevel = logLevel;
 }
 
 template<int _>
-inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() {
+inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() noexcept {
   return fmtlogWrapper<>::impl.currentLogLevel;
 }
 
