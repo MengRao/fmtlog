@@ -425,7 +425,15 @@ public:
       return encodeArgs<CstringIdx>(cstringSize, out + len + 1, std::forward<Args>(args)...);
     }
     else {
-      new (out) fmt::remove_cvref_t<Arg>(std::forward<Arg>(arg));
+      // If Arg has alignment >= 16, gcc could emit aligned move instructions(e.g. movdqa) for
+      // placement new even if the *out* is misaligned, which would cause segfault. So we use memcpy
+      // when possible
+      if constexpr (std::is_trivially_copyable_v<fmt::remove_cvref_t<Arg>>) {
+        memcpy(out, &arg, sizeof(Arg));
+      }
+      else {
+        new (out) fmt::remove_cvref_t<Arg>(std::forward<Arg>(arg));
+      }
       return encodeArgs<CstringIdx>(cstringSize, out + sizeof(Arg), std::forward<Args>(args)...);
     }
   }
