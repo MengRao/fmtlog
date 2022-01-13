@@ -632,6 +632,7 @@ public:
       out += 8;
       encodeArgs<0>(cstringSizes, out, std::forward<Args>(args)...);
       header->push(alloc_size);
+      break;
     } while (FMTLOG_BLOCK);
   }
 
@@ -658,6 +659,7 @@ public:
       out += 8;
       vformat_to(out, sv, fmt_args);
       header->push(alloc_size);
+      break;
     } while (FMTLOG_BLOCK);
   }
 };
