@@ -494,19 +494,19 @@ void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* loc
 
 template<int _>
 void fmtlogT<_>::vformat_to(fmtlog::MemoryBuffer& out, fmt::string_view fmt,
-                            fmt::format_args args) noexcept {
+                            fmt::format_args args) {
   fmt::detail::vformat_to(out, fmt, args);
 }
 
 template<int _>
-size_t fmtlogT<_>::formatted_size(fmt::string_view fmt, fmt::format_args args) noexcept {
+size_t fmtlogT<_>::formatted_size(fmt::string_view fmt, fmt::format_args args) {
   auto buf = fmt::detail::counting_buffer<>();
   fmt::detail::vformat_to(buf, fmt, args);
   return buf.count();
 }
 
 template<int _>
-void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args args) noexcept {
+void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args args) {
   fmt::vformat_to(out, fmt, args);
 }
 
