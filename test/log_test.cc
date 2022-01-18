@@ -15,7 +15,8 @@ void logcb(int64_t ns, fmtlog::LogLevel level, fmt::string_view location, size_t
 
 int main() {
   char randomString[] = "Hello World";
-  logi("A string, pointer, number, and float: '{}', {}, {}, {}", randomString, (void*)&randomString, 512, 3.14159);
+  logi("A string, pointer, number, and float: '{}', {}, {}, {}", randomString, (void*)&randomString,
+       512, 3.14159);
 
   int a = 4;
   auto sptr = std::make_shared<int>(5);
