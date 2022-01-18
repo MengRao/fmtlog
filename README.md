@@ -97,7 +97,7 @@ logi("int: {0:d};  hex: {0:#x};  oct: {0:#o};  bin: {0:#b}", 42);
 logi("dynamic precision: {:.{}f}", 3.14, 1);
 
 // This gives a compile-time error in C++20 because d is an invalid format specifier for a string.
-logi("{:d}", "foo");
+logi("{:d}", "I am not a number");
 ```
 As an asynchronous logging library, fmtlog provides additional support for passing arguments by pointer(which is seldom needed for fmtlib and it only supports void and char pointers). User can pass a pointer of any type as argument to avoid copy overhead if the lifetime of referred object is assured(otherwise the polling thread will refer to a dangling pointer!). For string arg as an example, fmtlog copies string content for type `std::string` by default, but only a pointer for type `std::string*`:
 ```c++
