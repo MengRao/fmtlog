@@ -614,17 +614,13 @@ public:
   }
 
 public:
-  template<typename S, typename... Args>
-  inline void log(uint32_t& logId, int64_t tsc, const char* location, LogLevel level,
-                  const S& format, Args&&... args) noexcept {
-    using namespace fmtlogdetail;
-    constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
-    if constexpr (num_named_args == 0) {
-      fmt::detail::check_format_string<typename UnrefPtr<fmt::remove_cvref_t<Args>>::type...>(
-        format);
-    }
+  template<typename... Args>
+  inline void log(
+    uint32_t& logId, int64_t tsc, const char* location, LogLevel level,
+    fmt::format_string<typename fmtlogdetail::UnrefPtr<fmt::remove_cvref_t<Args>>::type...> format,
+    Args&&... args) noexcept {
     if (!logId) {
-      auto unnamed_format = unNameFormat<false>(fmt::to_string_view(format), nullptr, args...);
+      auto unnamed_format = unNameFormat<false>(fmt::string_view(format), nullptr, args...);
       registerLogInfo(logId, formatTo<Args...>, location, level, unnamed_format);
     }
     constexpr size_t num_cstring = fmt::detail::count<isCstring<Args>()...>();
@@ -644,12 +640,9 @@ public:
     } while (FMTLOG_BLOCK);
   }
 
-  template<typename S, typename... Args>
-  inline void logOnce(const char* location, LogLevel level, const S& format, Args&&... args) {
-    constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
-    if constexpr (num_named_args == 0) {
-      fmt::detail::check_format_string<Args...>(format);
-    }
+  template<typename... Args>
+  inline void logOnce(const char* location, LogLevel level, fmt::format_string<Args...> format,
+                      Args&&... args) {
     fmt::string_view sv(format);
     auto&& fmt_args = fmt::make_format_args(args...);
     size_t fmt_size = formatted_size(sv, fmt_args);
