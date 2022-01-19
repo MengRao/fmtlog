@@ -628,15 +628,15 @@ public:
     size_t alloc_size = 8 + getArgSizes<0>(cstringSizes, args...);
     if (threadBuffer == nullptr) preallocate();
     do {
-      auto header = threadBuffer->varq.allocMsg(alloc_size);
-      if (!header) continue;
-      header->logId = logId;
-      char* out = (char*)(header + 1);
-      *(int64_t*)out = tsc;
-      out += 8;
-      encodeArgs<0>(cstringSizes, out, std::forward<Args>(args)...);
-      header->push(alloc_size);
-      break;
+      if (auto header = threadBuffer->varq.allocMsg(alloc_size)) {
+        header->logId = logId;
+        char* out = (char*)(header + 1);
+        *(int64_t*)out = tsc;
+        out += 8;
+        encodeArgs<0>(cstringSizes, out, std::forward<Args>(args)...);
+        header->push(alloc_size);
+        break;
+      }
     } while (FMTLOG_BLOCK);
   }
 
