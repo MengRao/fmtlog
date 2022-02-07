@@ -484,7 +484,7 @@ fmtlogDetailT<> fmtlogDetailWrapper<_>::impl;
 
 template<int _>
 void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location,
-                                 LogLevel level, fmt::string_view fmtString) noexcept {
+                                 LogLevel level, fmt::string_view fmtString) FMT_NOEXCEPT {
   auto& d = fmtlogDetailWrapper<>::impl;
   std::lock_guard<std::mutex> lock(d.logInfoMutex);
   if (logId) return;
@@ -512,12 +512,12 @@ void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args ar
 
 template<int _>
 typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader*
-fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) noexcept {
+fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) FMT_NOEXCEPT {
   return alloc(size);
 }
 
 template<int _>
-void fmtlogT<_>::preallocate() noexcept {
+void fmtlogT<_>::preallocate() FMT_NOEXCEPT {
   fmtlogDetailWrapper<>::impl.preallocate();
 }
 
@@ -527,7 +527,7 @@ void fmtlogT<_>::setLogFile(const char* filename, bool truncate) {
   FILE* newFp = fopen(filename, truncate ? "w" : "a");
   if (!newFp) {
     std::string err = fmt::format("Unable to open file: {}: {}", filename, strerror(errno));
-    throw std::ios_base::failure(err);
+    fmt::detail::throw_format_error(err.c_str());
   }
   setbuf(newFp, nullptr);
   d.fpos = ftell(newFp);
@@ -552,22 +552,22 @@ void fmtlogT<_>::setLogFile(FILE* fp, bool manageFp) {
 }
 
 template<int _>
-void fmtlogT<_>::setFlushDelay(int64_t ns) noexcept {
+void fmtlogT<_>::setFlushDelay(int64_t ns) FMT_NOEXCEPT {
   fmtlogDetailWrapper<>::impl.flushDelay = ns;
 }
 
 template<int _>
-void fmtlogT<_>::flushOn(LogLevel flushLogLevel) noexcept {
+void fmtlogT<_>::flushOn(LogLevel flushLogLevel) FMT_NOEXCEPT {
   fmtlogDetailWrapper<>::impl.flushLogLevel = flushLogLevel;
 }
 
 template<int _>
-void fmtlogT<_>::setFlushBufSize(uint32_t bytes) noexcept {
+void fmtlogT<_>::setFlushBufSize(uint32_t bytes) FMT_NOEXCEPT {
   fmtlogDetailWrapper<>::impl.flushBufSize = bytes;
 }
 
 template<int _>
-void fmtlogT<_>::closeLogFile() noexcept {
+void fmtlogT<_>::closeLogFile() FMT_NOEXCEPT {
   fmtlogDetailWrapper<>::impl.closeLogFile();
 }
 
@@ -577,13 +577,13 @@ void fmtlogT<_>::poll(bool forceFlush) {
 }
 
 template<int _>
-void fmtlogT<_>::setThreadName(const char* name) noexcept {
+void fmtlogT<_>::setThreadName(const char* name) FMT_NOEXCEPT {
   preallocate();
   threadBuffer->nameSize = fmt::format_to_n(threadBuffer->name, sizeof(fmtlog::threadBuffer->name), "{}", name).size;
 }
 
 template<int _>
-void fmtlogT<_>::setLogCB(LogCBFn cb, LogLevel minCBLogLevel_) noexcept {
+void fmtlogT<_>::setLogCB(LogCBFn cb, LogLevel minCBLogLevel_) FMT_NOEXCEPT {
   auto& d = fmtlogDetailWrapper<>::impl;
   d.logCB = cb;
   d.minCBLogLevel = minCBLogLevel_;
@@ -595,17 +595,17 @@ void fmtlogT<_>::setHeaderPattern(const char* pattern) {
 }
 
 template<int _>
-void fmtlogT<_>::startPollingThread(int64_t pollInterval) noexcept {
+void fmtlogT<_>::startPollingThread(int64_t pollInterval) FMT_NOEXCEPT {
   fmtlogDetailWrapper<>::impl.startPollingThread(pollInterval);
 }
 
 template<int _>
-void fmtlogT<_>::stopPollingThread() noexcept {
+void fmtlogT<_>::stopPollingThread() FMT_NOEXCEPT {
   fmtlogDetailWrapper<>::impl.stopPollingThread();
 }
 
 template<int _>
-void fmtlogT<_>::setTscGhz(double tscGhz) noexcept {
+void fmtlogT<_>::setTscGhz(double tscGhz) FMT_NOEXCEPT {
   fmtlogWrapper<>::impl.tscns.init(tscGhz);
 }
 
