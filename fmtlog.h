@@ -268,8 +268,10 @@ public:
     static inline int64_t rdtsc() {
 #ifdef _WIN32
       return __rdtsc();
-#else
+#elif defined(__i386__) || defined(__x86_64__) || defined(__amd64__)
       return __builtin_ia32_rdtsc();
+#else
+      return rdsysns();
 #endif
     }
 
