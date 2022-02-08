@@ -32,7 +32,8 @@ int main() {
   str = "bbb";
   strcpy(cstr, "222");
 
-  // logi("This msg will trigger compile error: {", 123);
+  // logi(FMT_STRING("This msg will trigger compile error: {:d}"), "I am not a number");
+  // FMT_STRING() above is not needed for c++20
 
   logd("This message wont be logged since it is lower "
        "than the current log level.");
