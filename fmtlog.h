@@ -548,7 +548,7 @@ public:
     const char* dtor_args[std::max(num_dtors, (size_t)1)];
     const char* ret;
     if (argIdx < 0) {
-      argIdx = args.size();
+      argIdx = (int)args.size();
       args.resize(argIdx + num_args);
       ret = decodeArgs<false, 0, 0, Args...>(data, args.data() + argIdx, dtor_args);
     }
@@ -632,7 +632,7 @@ public:
     }
     constexpr size_t num_cstring = fmt::detail::count<isCstring<Args>()...>();
     size_t cstringSizes[std::max(num_cstring, (size_t)1)];
-    size_t alloc_size = 8 + getArgSizes<0>(cstringSizes, args...);
+    uint32_t alloc_size = 8 + (uint32_t)getArgSizes<0>(cstringSizes, args...);
     do {
       if (auto header = allocMsg(alloc_size)) {
         header->logId = logId;
@@ -651,8 +651,8 @@ public:
                       Args&&... args) {
     fmt::string_view sv(format);
     auto&& fmt_args = fmt::make_format_args(args...);
-    size_t fmt_size = formatted_size(sv, fmt_args);
-    size_t alloc_size = 8 + 8 + fmt_size;
+    uint32_t fmt_size = formatted_size(sv, fmt_args);
+    uint32_t alloc_size = 8 + 8 + fmt_size;
     do {
       if (auto header = allocMsg(alloc_size)) {
         header->logId = (uint32_t)level;
