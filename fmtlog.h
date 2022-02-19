@@ -153,6 +153,9 @@ public:
   // Get current log level
   static inline LogLevel getLogLevel() FMT_NOEXCEPT;
 
+  // return true if passed log level is not lower than current log level
+  static inline bool checkLogLevel(LogLevel logLevel) FMT_NOEXCEPT;
+
   // Run a polling thread in the background with a polling interval
   // Note that user must not call poll() himself when the thread is running
   static void startPollingThread(int64_t pollInterval = 1000000) FMT_NOEXCEPT;
@@ -335,6 +338,8 @@ public:
   static size_t formatted_size(fmt::string_view fmt, fmt::format_args args);
 
   static void vformat_to(char* out, fmt::string_view fmt, fmt::format_args args);
+
+  static typename SPSCVarQueueOPT::MsgHeader* allocMsg(uint32_t size) FMT_NOEXCEPT;
 
   TSCNS tscns;
 
@@ -628,9 +633,8 @@ public:
     constexpr size_t num_cstring = fmt::detail::count<isCstring<Args>()...>();
     size_t cstringSizes[std::max(num_cstring, (size_t)1)];
     size_t alloc_size = 8 + getArgSizes<0>(cstringSizes, args...);
-    if (threadBuffer == nullptr) preallocate();
     do {
-      if (auto header = threadBuffer->varq.allocMsg(alloc_size)) {
+      if (auto header = allocMsg(alloc_size)) {
         header->logId = logId;
         char* out = (char*)(header + 1);
         *(int64_t*)out = tsc;
@@ -649,9 +653,8 @@ public:
     auto&& fmt_args = fmt::make_format_args(args...);
     size_t fmt_size = formatted_size(sv, fmt_args);
     size_t alloc_size = 8 + 8 + fmt_size;
-    if (threadBuffer == nullptr) preallocate();
     do {
-      if (auto header = threadBuffer->varq.allocMsg(alloc_size)) {
+      if (auto header = allocMsg(alloc_size)) {
         header->logId = (uint32_t)level;
         char* out = (char*)(header + 1);
         *(int64_t*)out = tscns.rdtsc();
@@ -688,6 +691,15 @@ inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() FMT_NOEXCEPT {
   return fmtlogWrapper<>::impl.currentLogLevel;
 }
 
+template<int _>
+inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) FMT_NOEXCEPT {
+#ifdef FMTLOG_NO_CHECK_LEVEL
+  return true;
+#else
+  return logLevel >= fmtlogWrapper<>::impl.currentLogLevel;
+#endif
+}
+
 #define __FMTLOG_S1(x) #x
 #define __FMTLOG_S2(x) __FMTLOG_S1(x)
 #define __FMTLOG_LOCATION __FILE__ ":" __FMTLOG_S2(__LINE__)
@@ -695,9 +707,7 @@ inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() FMT_NOEXCEPT {
 #define FMTLOG(level, format, ...)                                                                 \
   do {                                                                                             \
     static uint32_t logId = 0;                                                                     \
-                                                                                                   \
-    if (level < fmtlog::getLogLevel()) break;                                                      \
-                                                                                                   \
+    if (!fmtlog::checkLogLevel(level)) break;                                                      \
     fmtlogWrapper<>::impl.log(logId, fmtlogWrapper<>::impl.tscns.rdtsc(), __FMTLOG_LOCATION,       \
                               level, format, ##__VA_ARGS__);                                       \
   } while (0)
@@ -706,20 +716,17 @@ inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() FMT_NOEXCEPT {
   do {                                                                                             \
     static uint32_t logId = 0;                                                                     \
     static int64_t limitNs = 0;                                                                    \
-                                                                                                   \
-    if (level < fmtlog::getLogLevel()) break;                                                      \
+    if (!fmtlog::checkLogLevel(level)) break;                                                      \
     int64_t tsc = fmtlogWrapper<>::impl.tscns.rdtsc();                                             \
     int64_t ns = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);                                          \
     if (ns < limitNs) break;                                                                       \
     limitNs = ns + min_interval;                                                                   \
-                                                                                                   \
     fmtlogWrapper<>::impl.log(logId, tsc, __FMTLOG_LOCATION, level, format, ##__VA_ARGS__);        \
   } while (0)
 
 #define FMTLOG_ONCE(level, format, ...)                                                            \
   do {                                                                                             \
-    if (level < fmtlog::getLogLevel()) break;                                                      \
-                                                                                                   \
+    if (!fmtlog::checkLogLevel(level)) break;                                                      \
     fmtlogWrapper<>::impl.logOnce(__FMTLOG_LOCATION, level, format, ##__VA_ARGS__);                \
   } while (0)
 

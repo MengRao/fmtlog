@@ -511,6 +511,12 @@ void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args ar
 }
 
 template<int _>
+typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader* fmtlogT<_>::allocMsg(uint32_t size) FMT_NOEXCEPT {
+  if (threadBuffer == nullptr) preallocate();
+  return threadBuffer->varq.alloc(size);
+}
+
+template<int _>
 typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader*
 fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) FMT_NOEXCEPT {
   return alloc(size);
