@@ -57,7 +57,7 @@ fmtlog::poll();
 fmtlog::setThreadName("ddd");
 
 ```
-fmtlog supports multi-threaded logging, but can only have one thread calling `fmtlog::poll()`. By default, fmtlog doesn't create a polling thread internally, it requires the user to poll it periodically. The idea is that this allows users to manage the threads in their own way, and have full control of polling/flushing behavior. However, you can ask  fmtlog to create a background polling thread for you by `fmtlog::startPollingThread(interval)` with a polling interval, but you can't call `fmtlog::poll()` when the thread is running.
+fmtlog supports multi-threaded logging, but can only have one thread calling `fmtlog::poll()`. By default, fmtlog doesn't create a polling thread internally, it requires the user to poll it periodically. The idea is that this allows users to manage the threads in their own way, and have full control of polling/flushing behavior. However, you can ask  fmtlog to create a background polling thread for you by `fmtlog::startPollingThread(interval)` with a polling interval, but you can't call `fmtlog::poll()` yourself when the thread is running.
 
 ## Format
 fmtlog is based on fmtlib, almost all fmtlib features are supported(except for color):
@@ -100,7 +100,7 @@ logi("dynamic precision: {:.{}f}", 3.14, 1);
 // FMT_STRING() is not needed from C++20 onward
 logi(FMT_STRING("{:d}"), "I am not a number");
 ```
-As an asynchronous logging library, fmtlog provides additional support for passing arguments by pointer(which is seldom needed for fmtlib and it only supports void and char pointers). User can pass a pointer of any type as argument to avoid copy overhead if the lifetime of referred object is assured(otherwise the polling thread will refer to a dangling pointer!). For string arg as an example, fmtlog copies string content for type `std::string` by default, but only a pointer for type `std::string*`:
+As an asynchronous logging library, fmtlog provides additional support for passing arguments by pointers(which is seldom needed for fmtlib and it only supports void and char pointers). User can pass a pointer of any type as argument to avoid copy overhead if the lifetime of referred object is assured(otherwise the polling thread will refer to a dangling pointer!). For string arg as an example, fmtlog copies string content for type `std::string` by default, but only a pointer for type `std::string*`:
 ```c++
   std::string str = "aaa";
   logi("str: {}, pstr: {}", str, &str);
