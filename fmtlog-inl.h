@@ -39,7 +39,7 @@ SOFTWARE.
 #endif
 
 namespace {
-void fmtlogEmptyFun() {
+void fmtlogEmptyFun(void*) {
 }
 } // namespace
 
@@ -244,6 +244,7 @@ public:
   fmtlog::LogCBFn logCB = nullptr;
   fmtlog::LogLevel minCBLogLevel;
   fmtlog::LogQFullCBFn logQFullCB = fmtlogEmptyFun;
+  void* logQFullCBArg = nullptr;
 
   fmtlog::MemoryBuffer membuf;
 
@@ -521,9 +522,10 @@ void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args ar
 template<int _>
 typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader* fmtlogT<_>::allocMsg(uint32_t size,
                                                                       bool q_full_cb) FMT_NOEXCEPT {
+  auto& d = fmtlogDetailWrapper<>::impl;
   if (threadBuffer == nullptr) preallocate();
   auto ret = threadBuffer->varq.alloc(size);
-  if ((ret == nullptr) & q_full_cb) fmtlogDetailWrapper<>::impl.logQFullCB();
+  if ((ret == nullptr) & q_full_cb) d.logQFullCB(d.logQFullCBArg);
   return ret;
 }
 
@@ -607,9 +609,10 @@ void fmtlogT<_>::setLogCB(LogCBFn cb, LogLevel minCBLogLevel_) FMT_NOEXCEPT {
 }
 
 template<int _>
-void fmtlogT<_>::setLogQFullCB(LogQFullCBFn cb) FMT_NOEXCEPT {
+void fmtlogT<_>::setLogQFullCB(LogQFullCBFn cb, void* userData) FMT_NOEXCEPT {
   auto& d = fmtlogDetailWrapper<>::impl;
   d.logQFullCB = cb;
+  d.logQFullCBArg = userData;
 }
 
 template<int _>

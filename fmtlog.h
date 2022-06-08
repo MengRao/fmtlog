@@ -137,8 +137,8 @@ public:
   // Set a callback function for all log msgs with a mininum log level
   static void setLogCB(LogCBFn cb, LogLevel minCBLogLevel) FMT_NOEXCEPT;
 
-  typedef void (*LogQFullCBFn)();
-  static void setLogQFullCB(LogQFullCBFn cb) FMT_NOEXCEPT;
+  typedef void (*LogQFullCBFn)(void* userData);
+  static void setLogQFullCB(LogQFullCBFn cb, void* userData) FMT_NOEXCEPT;
 
   // Close the log file and subsequent msgs will not be written into the file,
   // but callback function can still be used
