@@ -272,7 +272,7 @@ public:
     }
 
     static inline int64_t rdtsc() {
-#ifdef _WIN32
+#ifdef _MSC_VER
       return __rdtsc();
 #elif defined(__i386__) || defined(__x86_64__) || defined(__amd64__)
       return __builtin_ia32_rdtsc();
