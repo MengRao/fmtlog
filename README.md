@@ -162,7 +162,7 @@ By default, fmtlog output to stdout. Normally users want to write to a log file 
 Optionally, user can ask fmtlog to close the log file by `fmtlog::closeLogFile()`, and subsequent log msgs will not be output.
 
 In addition to writing to a FILE*, user can register a callback function to handle log msgs by `fmtlog::setLogCB(cb, minCBLogLevel)`. This can be useful in circumstances where warning/error msgs need to be published out in real time for alerting purposes. Log callback will not be buffered as log file, and can be triggered even when the file is closed.
-The signiture of callback function is:
+The signature of callback function is:
 ```c++
   // callback signature user can register
   // ns: nanosecond timestamp
