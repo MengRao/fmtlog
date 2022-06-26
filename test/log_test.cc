@@ -1,7 +1,6 @@
 #include <chrono>
 #include <iostream>
 
-#define FMTLOG_ACTIVE_LEVEL FMTLOG_LEVEL_DBG
 #include "../fmtlog.h"
 
 void runBenchmark();

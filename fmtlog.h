@@ -48,7 +48,7 @@ SOFTWARE.
 
 // define FMTLOG_ACTIVE_LEVEL to turn off low log level in compile time
 #ifndef FMTLOG_ACTIVE_LEVEL
-#define FMTLOG_ACTIVE_LEVEL FMTLOG_LEVEL_INF
+#define FMTLOG_ACTIVE_LEVEL FMTLOG_LEVEL_DBG
 #endif
 
 namespace fmtlogdetail {
