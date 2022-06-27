@@ -420,6 +420,7 @@ public:
   }
 
   void poll(bool forceFlush) {
+    fmtlogWrapper<>::impl.tscns.calibrate();
     int64_t tsc = fmtlogWrapper<>::impl.tscns.rdtsc();
     if (logInfos.size()) {
       std::unique_lock<std::mutex> lock(logInfoMutex);
@@ -628,11 +629,6 @@ void fmtlogT<_>::startPollingThread(int64_t pollInterval) FMT_NOEXCEPT {
 template<int _>
 void fmtlogT<_>::stopPollingThread() FMT_NOEXCEPT {
   fmtlogDetailWrapper<>::impl.stopPollingThread();
-}
-
-template<int _>
-void fmtlogT<_>::setTscGhz(double tscGhz) FMT_NOEXCEPT {
-  fmtlogWrapper<>::impl.tscns.init(tscGhz);
 }
 
 template class fmtlogT<0>;
