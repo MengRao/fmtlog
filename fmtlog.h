@@ -285,7 +285,9 @@ public:
     inline int64_t tsc2ns(int64_t tsc) const {
       while (true) {
         uint32_t before_seq = param_seq.load(std::memory_order_acquire) & ~1;
+        std::atomic_signal_fence(std::memory_order_acq_rel);
         int64_t ns = ns_offset + (int64_t)(tsc * ns_per_tsc);
+        std::atomic_signal_fence(std::memory_order_acq_rel);
         uint32_t after_seq = param_seq.load(std::memory_order_acquire);
         if (before_seq == after_seq) return ns;
       }
@@ -345,8 +347,10 @@ public:
       next_calibrate_tsc = base_tsc + (int64_t)(calibate_interval_ns / new_ns_per_tsc);
       uint32_t seq = param_seq.load(std::memory_order_relaxed);
       param_seq.store(++seq, std::memory_order_release);
+      std::atomic_signal_fence(std::memory_order_acq_rel);
       ns_per_tsc = new_ns_per_tsc;
       ns_offset = base_ns - (int64_t)(base_tsc * ns_per_tsc);
+      std::atomic_signal_fence(std::memory_order_acq_rel);
       param_seq.store(++seq, std::memory_order_release);
     }
 
