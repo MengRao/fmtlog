@@ -355,8 +355,8 @@ public:
     }
 
     alignas(64) std::atomic<uint32_t> param_seq = 0;
-    double ns_per_tsc = 1.0;
-    int64_t ns_offset = 0;
+    double ns_per_tsc;
+    int64_t ns_offset;
     int64_t calibate_interval_ns;
     int64_t last_ns;
     double last_ns_err;
