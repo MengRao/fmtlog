@@ -402,7 +402,7 @@ public:
   struct unNamedType<fmt::detail::named_arg<char, Arg>>
   { using type = Arg; };
 
-#if FMT_USE_NONTYPE_TEMPLATE_PARAMETERS
+#if FMT_USE_NONTYPE_TEMPLATE_ARGS
   template<typename Arg, size_t N, fmt::detail_exported::fixed_string<char, N> Str>
   struct unNamedType<fmt::detail::statically_named_arg<Arg, char, N, Str>>
   { using type = Arg; };
