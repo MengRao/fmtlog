@@ -494,7 +494,7 @@ fmtlogDetailT<> fmtlogDetailWrapper<_>::impl;
 
 template<int _>
 void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location,
-                                 LogLevel level, fmt::string_view fmtString) FMT_NOEXCEPT {
+                                 LogLevel level, fmt::string_view fmtString) noexcept {
   auto& d = fmtlogDetailWrapper<>::impl;
   std::lock_guard<std::mutex> lock(d.logInfoMutex);
   if (logId) return;
@@ -522,7 +522,7 @@ void fmtlogT<_>::vformat_to(char* out, fmt::string_view fmt, fmt::format_args ar
 
 template<int _>
 typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader* fmtlogT<_>::allocMsg(uint32_t size,
-                                                                      bool q_full_cb) FMT_NOEXCEPT {
+                                                                      bool q_full_cb) noexcept {
   auto& d = fmtlogDetailWrapper<>::impl;
   if (threadBuffer == nullptr) preallocate();
   auto ret = threadBuffer->varq.alloc(size);
@@ -532,12 +532,12 @@ typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader* fmtlogT<_>::allocMsg(uint32_t s
 
 template<int _>
 typename fmtlogT<_>::SPSCVarQueueOPT::MsgHeader*
-fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) FMT_NOEXCEPT {
+fmtlogT<_>::SPSCVarQueueOPT::allocMsg(uint32_t size) noexcept {
   return alloc(size);
 }
 
 template<int _>
-void fmtlogT<_>::preallocate() FMT_NOEXCEPT {
+void fmtlogT<_>::preallocate() noexcept {
   fmtlogDetailWrapper<>::impl.preallocate();
 }
 
@@ -572,22 +572,22 @@ void fmtlogT<_>::setLogFile(FILE* fp, bool manageFp) {
 }
 
 template<int _>
-void fmtlogT<_>::setFlushDelay(int64_t ns) FMT_NOEXCEPT {
+void fmtlogT<_>::setFlushDelay(int64_t ns) noexcept {
   fmtlogDetailWrapper<>::impl.flushDelay = ns;
 }
 
 template<int _>
-void fmtlogT<_>::flushOn(LogLevel flushLogLevel) FMT_NOEXCEPT {
+void fmtlogT<_>::flushOn(LogLevel flushLogLevel) noexcept {
   fmtlogDetailWrapper<>::impl.flushLogLevel = flushLogLevel;
 }
 
 template<int _>
-void fmtlogT<_>::setFlushBufSize(uint32_t bytes) FMT_NOEXCEPT {
+void fmtlogT<_>::setFlushBufSize(uint32_t bytes) noexcept {
   fmtlogDetailWrapper<>::impl.flushBufSize = bytes;
 }
 
 template<int _>
-void fmtlogT<_>::closeLogFile() FMT_NOEXCEPT {
+void fmtlogT<_>::closeLogFile() noexcept {
   fmtlogDetailWrapper<>::impl.closeLogFile();
 }
 
@@ -597,20 +597,20 @@ void fmtlogT<_>::poll(bool forceFlush) {
 }
 
 template<int _>
-void fmtlogT<_>::setThreadName(const char* name) FMT_NOEXCEPT {
+void fmtlogT<_>::setThreadName(const char* name) noexcept {
   preallocate();
   threadBuffer->nameSize = fmt::format_to_n(threadBuffer->name, sizeof(fmtlog::threadBuffer->name), "{}", name).size;
 }
 
 template<int _>
-void fmtlogT<_>::setLogCB(LogCBFn cb, LogLevel minCBLogLevel_) FMT_NOEXCEPT {
+void fmtlogT<_>::setLogCB(LogCBFn cb, LogLevel minCBLogLevel_) noexcept {
   auto& d = fmtlogDetailWrapper<>::impl;
   d.logCB = cb;
   d.minCBLogLevel = minCBLogLevel_;
 }
 
 template<int _>
-void fmtlogT<_>::setLogQFullCB(LogQFullCBFn cb, void* userData) FMT_NOEXCEPT {
+void fmtlogT<_>::setLogQFullCB(LogQFullCBFn cb, void* userData) noexcept {
   auto& d = fmtlogDetailWrapper<>::impl;
   d.logQFullCB = cb;
   d.logQFullCBArg = userData;
@@ -622,12 +622,12 @@ void fmtlogT<_>::setHeaderPattern(const char* pattern) {
 }
 
 template<int _>
-void fmtlogT<_>::startPollingThread(int64_t pollInterval) FMT_NOEXCEPT {
+void fmtlogT<_>::startPollingThread(int64_t pollInterval) noexcept {
   fmtlogDetailWrapper<>::impl.startPollingThread(pollInterval);
 }
 
 template<int _>
-void fmtlogT<_>::stopPollingThread() FMT_NOEXCEPT {
+void fmtlogT<_>::stopPollingThread() noexcept {
   fmtlogDetailWrapper<>::impl.stopPollingThread();
 }
 

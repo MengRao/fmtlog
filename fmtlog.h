@@ -98,7 +98,7 @@ public:
   };
 
   // Preallocate thread queue for current thread
-  static void preallocate() FMT_NOEXCEPT;
+  static void preallocate() noexcept;
 
   // Set the file for logging
   static void setLogFile(const char* filename, bool truncate = false);
@@ -114,13 +114,13 @@ public:
 
   // Set flush delay in nanosecond
   // If there's msg older than ns in the buffer, flush will be triggered
-  static void setFlushDelay(int64_t ns) FMT_NOEXCEPT;
+  static void setFlushDelay(int64_t ns) noexcept;
 
   // If current msg has level >= flushLogLevel, flush will be triggered
-  static void flushOn(LogLevel flushLogLevel) FMT_NOEXCEPT;
+  static void flushOn(LogLevel flushLogLevel) noexcept;
 
   // If file buffer has more than specified bytes, flush will be triggered
-  static void setFlushBufSize(uint32_t bytes) FMT_NOEXCEPT;
+  static void setFlushBufSize(uint32_t bytes) noexcept;
 
   // callback signature user can register
   // ns: nanosecond timestamp
@@ -136,36 +136,36 @@ public:
                           size_t logFilePos);
 
   // Set a callback function for all log msgs with a mininum log level
-  static void setLogCB(LogCBFn cb, LogLevel minCBLogLevel) FMT_NOEXCEPT;
+  static void setLogCB(LogCBFn cb, LogLevel minCBLogLevel) noexcept;
 
   typedef void (*LogQFullCBFn)(void* userData);
-  static void setLogQFullCB(LogQFullCBFn cb, void* userData) FMT_NOEXCEPT;
+  static void setLogQFullCB(LogQFullCBFn cb, void* userData) noexcept;
 
   // Close the log file and subsequent msgs will not be written into the file,
   // but callback function can still be used
-  static void closeLogFile() FMT_NOEXCEPT;
+  static void closeLogFile() noexcept;
 
   // Set log header pattern with fmt named arguments
   static void setHeaderPattern(const char* pattern);
 
   // Set a name for current thread, it'll be shown in {t} part in header pattern
-  static void setThreadName(const char* name) FMT_NOEXCEPT;
+  static void setThreadName(const char* name) noexcept;
 
   // Set current log level, lower level log msgs will be discarded
-  static inline void setLogLevel(LogLevel logLevel) FMT_NOEXCEPT;
+  static inline void setLogLevel(LogLevel logLevel) noexcept;
 
   // Get current log level
-  static inline LogLevel getLogLevel() FMT_NOEXCEPT;
+  static inline LogLevel getLogLevel() noexcept;
 
   // return true if passed log level is not lower than current log level
-  static inline bool checkLogLevel(LogLevel logLevel) FMT_NOEXCEPT;
+  static inline bool checkLogLevel(LogLevel logLevel) noexcept;
 
   // Run a polling thread in the background with a polling interval
   // Note that user must not call poll() himself when the thread is running
-  static void startPollingThread(int64_t pollInterval = 1000000) FMT_NOEXCEPT;
+  static void startPollingThread(int64_t pollInterval = 1000000) noexcept;
 
   // Stop the polling thread
-  static void stopPollingThread() FMT_NOEXCEPT;
+  static void stopPollingThread() noexcept;
 
   // https://github.com/MengRao/SPSC_Queue
   class SPSCVarQueueOPT
@@ -180,7 +180,7 @@ public:
     };
     static constexpr uint32_t BLK_CNT = (1 << 20) / sizeof(MsgHeader);
 
-    MsgHeader* allocMsg(uint32_t size) FMT_NOEXCEPT;
+    MsgHeader* allocMsg(uint32_t size) noexcept;
 
     MsgHeader* alloc(uint32_t size) {
       size += sizeof(MsgHeader);
@@ -374,7 +374,7 @@ public:
                                     int& argIdx, std::vector<fmt::basic_format_arg<Context>>& args);
 
   static void registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
-                              fmt::string_view fmtString) FMT_NOEXCEPT;
+                              fmt::string_view fmtString) noexcept;
 
   static void vformat_to(MemoryBuffer& out, fmt::string_view fmt, fmt::format_args args);
 
@@ -382,7 +382,7 @@ public:
 
   static void vformat_to(char* out, fmt::string_view fmt, fmt::format_args args);
 
-  static typename SPSCVarQueueOPT::MsgHeader* allocMsg(uint32_t size, bool logQFullCB) FMT_NOEXCEPT;
+  static typename SPSCVarQueueOPT::MsgHeader* allocMsg(uint32_t size, bool logQFullCB) noexcept;
 
   TSCNS tscns;
 
@@ -668,7 +668,7 @@ public:
   inline void log(
     uint32_t& logId, int64_t tsc, const char* location, LogLevel level,
     fmt::format_string<typename fmtlogdetail::UnrefPtr<fmt::remove_cvref_t<Args>>::type...> format,
-    Args&&... args) FMT_NOEXCEPT {
+    Args&&... args) noexcept {
     if (!logId) {
       auto unnamed_format = unNameFormat<false>(fmt::string_view(format), nullptr, args...);
       registerLogInfo(logId, formatTo<Args...>, location, level, unnamed_format);
@@ -729,17 +729,17 @@ template<int _>
 fmtlog fmtlogWrapper<_>::impl;
 
 template<int _>
-inline void fmtlogT<_>::setLogLevel(LogLevel logLevel) FMT_NOEXCEPT {
+inline void fmtlogT<_>::setLogLevel(LogLevel logLevel) noexcept {
   fmtlogWrapper<>::impl.currentLogLevel = logLevel;
 }
 
 template<int _>
-inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() FMT_NOEXCEPT {
+inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() noexcept {
   return fmtlogWrapper<>::impl.currentLogLevel;
 }
 
 template<int _>
-inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) FMT_NOEXCEPT {
+inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) noexcept {
 #ifdef FMTLOG_NO_CHECK_LEVEL
   return true;
 #else
