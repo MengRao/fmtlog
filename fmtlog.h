@@ -160,9 +160,9 @@ public:
   // return true if passed log level is not lower than current log level
   static inline bool checkLogLevel(LogLevel logLevel) noexcept;
 
-  // Run a polling thread in the background with a polling interval
+  // Run a polling thread in the background with a polling interval in ns
   // Note that user must not call poll() himself when the thread is running
-  static void startPollingThread(int64_t pollInterval = 1000000) noexcept;
+  static void startPollingThread(int64_t pollInterval = 1000000000) noexcept;
 
   // Stop the polling thread
   static void stopPollingThread() noexcept;
