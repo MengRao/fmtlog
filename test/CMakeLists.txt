@@ -47,6 +47,8 @@ target_link_libraries(enc_dec_test fmtlog-static fmt)
 install(TARGETS enc_dec_test)
 
 add_executable(multithread_test multithread_test.cc)
-target_link_libraries(multithread_test fmtlog-static fmt)
+target_compile_definitions(multithread_test PUBLIC FMTLOG_HEADER_ONLY)
+#target_link_libraries(multithread_test fmtlog-static fmt)
+target_link_libraries(multithread_test fmt)
 install(TARGETS multithread_test)
 

@@ -7,6 +7,3 @@
 [submodule "bench/spdlog"]
 	path = bench/spdlog
 	url = https://github.com/gabime/spdlog
-[submodule "bench/NanoLog"]
-	path = bench/NanoLog
-	url = https://github.com/PlatformLab/NanoLog
