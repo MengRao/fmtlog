@@ -57,6 +57,10 @@ SOFTWARE.
 #define FMTLOG_ACTIVE_LEVEL FMTLOG_LEVEL_DBG
 #endif
 
+#ifndef FMTLOG_QUEUE_SIZE
+#define FMTLOG_QUEUE_SIZE (1 << 20)
+#endif
+
 namespace fmtlogdetail {
 template<typename Arg>
 struct UnrefPtr : std::false_type
@@ -178,7 +182,7 @@ public:
       uint32_t size;
       uint32_t logId;
     };
-    static constexpr uint32_t BLK_CNT = (1 << 20) / sizeof(MsgHeader);
+    static constexpr uint32_t BLK_CNT = FMTLOG_QUEUE_SIZE / sizeof(MsgHeader);
 
     MsgHeader* allocMsg(uint32_t size) noexcept;
 
