@@ -76,7 +76,7 @@ foreach(file ${test_sources})
   endif()
 
 
-  target_link_libraries(${test_name}_Tests PRIVATE fmtlib::fmtlib)
+  target_link_libraries(${test_name}_Tests PRIVATE fmtlog::fmtlog)
 
 
   #

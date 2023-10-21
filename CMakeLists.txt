@@ -193,6 +193,13 @@ if(${${PROJECT_NAME}_BUILD_HEADERS_ONLY})
   else()
     target_link_libraries(${PROJECT_NAME} INTERFACE fmt::fmt)
   endif()
+
+
+  find_package(Threads)
+
+  target_link_libraries(${PROJECT_NAME} INTERFACE Threads::Threads)
+
+
 endif()
 
 # For Windows, it is necessary to link with the MultiThreaded library. Depending
