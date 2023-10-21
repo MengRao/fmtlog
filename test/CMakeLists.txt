@@ -1,54 +1,94 @@
-if(NOT MSVC)
-  add_library(static_lib lib.cc)
+cmake_minimum_required(VERSION 3.15)
 
-  add_library(static_header_lib lib.cc)
-  target_compile_definitions(static_header_lib PUBLIC FMTLOG_HEADER_ONLY)
+#
+# Project details
+#
 
-  add_library(shared_lib SHARED lib.cc)
-  install(TARGETS shared_lib)
+project(
+  ${CMAKE_PROJECT_NAME}Tests
+  LANGUAGES CXX
+)
 
-  add_library(shared_header_lib SHARED lib.cc)
-  target_compile_definitions(shared_header_lib PUBLIC FMTLOG_HEADER_ONLY)
-  install(TARGETS shared_header_lib)
+include(../cmake/Utils.cmake)
 
-  add_executable(link_static_static link_test.cc)
-  target_link_libraries(link_static_static fmtlog-static static_lib fmt)
-  install(TARGETS link_static_static)
+set(${CMAKE_PROJECT_NAME}_USE_GTEST OFF)
+set(${CMAKE_PROJECT_NAME}_USE_CATCH2 OFF)
 
-  add_executable(link_static_shared link_test.cc)
-  target_link_libraries(link_static_shared fmtlog-static shared_lib fmt)
-  install(TARGETS link_static_shared)
+verbose_message("Adding tests under ${CMAKE_PROJECT_NAME}Tests...")
 
-  add_executable(link_shared_static link_test.cc)
-  target_link_libraries(link_shared_static fmtlog-shared static_lib fmt)
-  install(TARGETS link_shared_static)
+foreach(file ${test_sources})
+  string(REGEX REPLACE "(.*\/)([a-zA-Z0-9_ ]+)(\.c[c,pp])" "\\2" test_name ${file}) 
+  message(DEBUG "test names: " ${test_name}_Tests)
+  add_executable(${test_name}_Tests ${file})
 
-  add_executable(link_shared_shared link_test.cc)
-  target_link_libraries(link_shared_shared fmtlog-shared shared_lib fmt)
-  install(TARGETS link_shared_shared)
+  #
+  # Set the compiler standard
+  #
 
-  add_executable(link_header_static link_test.cc)
-  target_link_libraries(link_header_static static_header_lib fmt)
-  install(TARGETS link_header_static)
+  target_compile_features(${test_name}_Tests PUBLIC cxx_std_17)
 
-  add_executable(link_header_shared link_test.cc)
-  target_link_libraries(link_header_shared shared_header_lib fmt)
-  install(TARGETS link_header_shared)
+  #
+  # Setup code coverage if enabled
+  #
 
-endif()
+  if (${CMAKE_PROJECT_NAME}_ENABLE_CODE_COVERAGE)
+    target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -O0 -g -fprofile-arcs -ftest-coverage)
+    target_link_options(${CMAKE_PROJECT_NAME} PUBLIC -fprofile-arcs -ftest-coverage)
+    verbose_message("Code coverage is enabled and provided with GCC.")
+  endif()
 
-add_executable(log_test log_test.cc)
-target_link_libraries(log_test fmtlog-static fmt)
-#target_compile_definitions(log_test PUBLIC FMTLOG_HEADER_ONLY)
-install(TARGETS log_test)
+  #
+  # Load the desired unit testing framework
+  #
+  # Currently supported: GoogleTest (and GoogleMock), Catch2.
 
-add_executable(enc_dec_test enc_dec_test.cc)
-target_link_libraries(enc_dec_test fmtlog-static fmt)
-install(TARGETS enc_dec_test)
+  if(${CMAKE_PROJECT_NAME}_BUILD_EXECUTABLE)
+    set(${CMAKE_PROJECT_NAME}_TEST_LIB ${CMAKE_PROJECT_NAME}_LIB)
+  else()
+    set(${CMAKE_PROJECT_NAME}_TEST_LIB ${CMAKE_PROJECT_NAME})
+  endif()
 
-add_executable(multithread_test multithread_test.cc)
-target_compile_definitions(multithread_test PUBLIC FMTLOG_HEADER_ONLY)
-#target_link_libraries(multithread_test fmtlog-static fmt)
-target_link_libraries(multithread_test fmt)
-install(TARGETS multithread_test)
+  if(${CMAKE_PROJECT_NAME}_USE_GTEST)
+    find_package(GTest REQUIRED)
 
+    if(${CMAKE_PROJECT_NAME}_USE_GOOGLE_MOCK)
+      set(GOOGLE_MOCK_LIBRARIES GTest::gmock GTest::gmock_main)
+    endif()
+
+    target_link_libraries(
+      ${test_name}_Tests
+      PUBLIC
+        GTest::GTest
+        GTest::Main
+        ${GOOGLE_MOCK_LIBRARIES}
+        ${${CMAKE_PROJECT_NAME}_TEST_LIB}
+    )
+  elseif(${CMAKE_PROJECT_NAME}_USE_CATCH2)
+    find_package(Catch2 REQUIRED)
+    target_link_libraries(
+      ${test_name}_Tests
+      PUBLIC
+        Catch2::Catch2
+        ${${CMAKE_PROJECT_NAME}_TEST_LIB}
+    )
+  else()
+    message(WARNING "Unknown testing library. Please setup your desired unit testing library by using `target_link_libraries`.")  
+  endif()
+
+
+  target_link_libraries(${test_name}_Tests PRIVATE fmtlib::fmtlib)
+
+
+  #
+  # Add the unit tests
+  #
+
+  add_test(
+    NAME
+      ${test_name}
+    COMMAND
+      ${test_name}_Tests
+  )
+endforeach()
+
+verbose_message("Finished adding unit tests for ${CMAKE_PROJECT_NAME}.")

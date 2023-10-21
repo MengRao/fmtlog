@@ -1,4 +1,4 @@
-#include "../fmtlog.h"
+#include "fmtlog/fmtlog.h"
 #include "fmt/ranges.h"
 #include <assert.h>
 #include <iostream>

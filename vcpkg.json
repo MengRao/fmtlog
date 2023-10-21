@@ -1,0 +1,8 @@
+{
+  "name": "fmtlog",
+  "version-string": "2.3.0",
+  "dependencies": [
+    "fmt"
+  ]
+}
+

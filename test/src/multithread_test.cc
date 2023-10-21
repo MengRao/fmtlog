@@ -2,7 +2,7 @@
 #include <thread>
 #include <atomic>
 
-#include "../fmtlog.h"
+#include "fmtlog/fmtlog.h"
 using namespace std;
 
 const int thr_cnt = 4;

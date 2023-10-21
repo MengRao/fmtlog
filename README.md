@@ -1,9 +1,9 @@
 # fmtlog
-fmtlog is a performant asynchronous logging library using [fmt](https://github.com/fmtlib/fmt) library format.
+fmtlog is a performant asynchronous header-only logging library using [fmt](https://github.com/fmtlib/fmt) library format.
 
 ## Features
 * Faster - lower runtime latency than [NanoLog](https://github.com/PlatformLab/NanoLog) and higher throughput than [spdlog](https://github.com/gabime/spdlog) (see [Performance](https://github.com/MengRao/fmtlog#Performance) below).
-* Headers only or compiled
+* Headers only
 * Feature rich formatting on top of excellent fmt library.
 * Asynchronous multi-threaded logging **in time order** and can also be used synchronously in single thread.
 * Custom formatting
@@ -12,25 +12,51 @@ fmtlog is a performant asynchronous logging library using [fmt](https://github.c
 * Log frequency limitation - specific logs can be set a minimum logging interval.
 
 ## Platforms
-* Linux (GCC 10.2 tested)
+* Linux (GCC 10.2,14.0 ; Clang 16.0.6 tested)
 * Windows (MSVC 2019 tested)
 
 ## Install
 C++17 is required, and fmtlog is dependent on [fmtlib](https://github.com/fmtlib/fmt), you need to install fmtlib first if you haven't.
-#### Header only version
-Just copy `fmtlog.h` and `fmtlog-inl.h` to your project, and:
-* Either define macro `FMTLOG_HEADER_ONLY` before including fmtlog.h.
-* Or include `fmtlog-inl.h` in one of your source files.
-
-#### Static/Shared lib version built by CMake
-```console
-$ git clone https://github.com/MengRao/fmtlog.git
-$ cd fmtlog
-$ git submodule init
-$ git submodule update
-$ ./build.sh
+#### Header only manually
+Just copy `fmtlog.h` and `fmtlog-inl.h` to your project and somehow link fmtlib.
+### CMake
+If you are using CMake, there's some options to add library, and some options to link fmtlib  
+#### How to add library?  
+##### Use add_subdirectory somehow and link fmtlib somehow 
+###### CPM aka CMake's missing package manager  
+Put somewhere next code (obviously after adding [CPM](https://github.com/cpm-cmake/CPM.cmake) itself ):
 ```
-Then copy `fmtlog.h` and `libfmtlog-static.a`/`libfmtlog-shared.so` generated in `.build` dir.
+CPMAddPackage(NAME fmtlog GIT_REPOSITORY "https://github.com/MengRao/fmtlog.git" TAG 2.3.0 OPTIONS "fmtlog_ENABLE_CPM ON")
+
+target_link_libraries(<your_target_name> [PRIVATE/PUBLIC/INTERFACE] fmtlib::fmtlib)
+```
+###### Through a submodule
+We do **not** recommend do that. Use CPM instead.  
+###### Have it somewhere at your repo  
+We do **not** recommend do that. Use CPM instead. 
+##### Get the lib as "package"
+###### vcpkg
+Right now it's not added to vcpkg.io , but wait, the process maybe in progress...
+###### conan
+Right now it's not added to conan.io , but wait, the process maybe in progress...  
+#### How to link fmtlib?  
+
+- Through the fmtlog library  
+- Just link fmtlib with your target additionally ( do it yourself )  
+##### How to link fmtlib through fmtlog library?
+There's next options:  
+
+- somehow add option `fmtlog_ENABLE_CPM ON` to add fmtlib through CPM.
+	+ if you want to use system's fmt: add `CPM_USE_LOCAL_PACKAGES ON` or add `CPM_LOCAL_PACKAGES_ONLY ON`  
+	+ if you want to download the fmtlib and everything that you can have from CPM  and compile all of it yourself everytime (consider installing `ccache`), add nothing or add `CPM_DOWNLOAD_ALL ON` .  
+	+ if you want to use header-only fmt lib, there's option `fmtlog_USE_HEADER_ONLY_FMTLIB`  
+- vcpkg
+	+ work in progress to add it to vcpkg.  
+- conan
+	+ work in progress to add it to conan center. 
+
+## CMake options  
+Check them at `cmake/StandardSettings.cmake`  .
 
 ## Usage
 ```c++
