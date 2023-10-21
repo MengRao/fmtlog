@@ -821,6 +821,4 @@ inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) noexcept {
 #define logel(min_interval, format, ...) (void)0
 #endif
 
-#ifdef FMTLOG_HEADER_ONLY
 #include "fmtlog-inl.h"
-#endif
