@@ -1,8 +1,8 @@
 [submodule "fmt"]
 	path = fmt
 	url = https://github.com/fmtlib/fmt
-[submodule "bench/Nanolog"]
-	path = bench/Nanolog
+[submodule "bench/NanoLog"]
+	path = bench/NanoLog
 	url = https://github.com/PlatformLab/NanoLog
 [submodule "bench/spdlog"]
 	path = bench/spdlog
