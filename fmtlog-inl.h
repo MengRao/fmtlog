@@ -382,7 +382,22 @@ public:
     setArgVal<14>(info.getBase());
     setArgVal<15>(info.getLocation());
     logLevel = (const char*)"DBG INF WRN ERR OFF" + (info.logLevel << 2);
-
+    static constexpr const char* RED = "\033[0;31m";
+    static constexpr const char* YELLOW = "\033[0;33m";
+    static constexpr const char* RESET = "\033[0m";
+    if (!manageFp) {
+      switch (info.logLevel) {
+        case FMTLOG_LEVEL_DBG:
+        case FMTLOG_LEVEL_INF: break;
+        case FMTLOG_LEVEL_WRN:
+          membuf.append(fmt::string_view(YELLOW));
+          break;
+        case FMTLOG_LEVEL_ERR:
+          membuf.append(fmt::string_view(RED));
+          break;
+        case FMTLOG_LEVEL_OFF: break;
+      }
+    }
     size_t headerPos = membuf.size();
     fmtlog::vformat_to(membuf, headerPattern, fmt::basic_format_args(args.data(), parttenArgSize));
     size_t bodyPos = membuf.size();
@@ -400,6 +415,9 @@ public:
             fpos + headerPos);
     }
     membuf.push_back('\n');
+    if (!manageFp) {
+      membuf.append(fmt::string_view(RESET));
+    }
     if (membuf.size() >= flushBufSize || info.logLevel >= flushLogLevel) {
       flushLogFile();
     }
