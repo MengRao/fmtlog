@@ -30,10 +30,13 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 #include <memory>
+#include <mutex>
 
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
+
+static std::mutex mtx;
 
 #ifdef _WIN32
 #define FAST_THREAD_LOCAL thread_local
@@ -824,3 +827,13 @@ inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) noexcept {
 #ifdef FMTLOG_HEADER_ONLY
 #include "fmtlog-inl.h"
 #endif
+
+
+inline void loggerInit(const std::string &name) {
+  std::unique_lock<std::mutex> lock(mtx);
+  fmtlog::setThreadName(name.c_str());
+  fmtlog::setFlushDelay(1);
+  lock.unlock();
+
+  logi("[FMTLOG] Program: {}, Compile time: " __DATE__ " " __TIME__ ", Compiler Version: " __VERSION__, program_invocation_short_name);
+}
