@@ -26,9 +26,16 @@ If you are using CMake, there's some options to add library, and some options to
 ###### CPM aka CMake's missing package manager  
 Put somewhere next code (obviously after adding [CPM](https://github.com/cpm-cmake/CPM.cmake) itself ):
 ```
-CPMAddPackage(NAME fmtlog GIT_REPOSITORY "https://github.com/MengRao/fmtlog.git" TAG 2.3.0 OPTIONS "fmtlog_ENABLE_CPM ON")
+CPMAddPackage(
+    NAME fmtlog 
+    GIT_REPOSITORY "https://github.com/Arniiiii/fmtlog_cmake_fix.git"
+    TAG master
+    OPTIONS 
+        "fmtlog_ENABLE_CPM ON"
+        "fmtlog_CLANG_FORMAT_BINARY OFF"
+)
 
-target_link_libraries(<your_target_name> [PRIVATE/PUBLIC/INTERFACE] fmtlib::fmtlib)
+target_link_libraries(<your_target_name> [PRIVATE/PUBLIC/INTERFACE] fmtlog::fmtlog)
 ```
 ###### Through a submodule
 We do **not** recommend do that. Use CPM instead.  
