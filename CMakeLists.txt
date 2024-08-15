@@ -165,7 +165,7 @@ if(${${PROJECT_NAME}_BUILD_HEADERS_ONLY})
     include(cmake/get_CPM.cmake)
     set(an_inverted_${PROJECT_NAME}_USE_HEADER_ONLY_FMTLIB NOT ${${PROJECT_NAME}_USE_HEADER_ONLY_FMTLIB})
     set(fmtlib_VERSION 11.0.2)
-    cpmaddpackage(
+    CPMAddPackage(
       NAME
       fmt
       VERSION
