@@ -24,11 +24,9 @@ endif()
 message(STATUS "Started CMake for ${PROJECT_NAME} v${PROJECT_VERSION}...\n")
 
 if(UNIX)
-  add_compile_options(
-    "$<$<CONFIG:DEBUG>:-D_DEBUG>") # this will allow to use same _DEBUG macro
-                                   # available in both Linux as well as Windows
-                                   # - MSCV environment. Easy to put Debug
-                                   # specific code.
+  add_compile_options("$<$<CONFIG:DEBUG>:-D_DEBUG>") # this will allow to use
+  # same _DEBUG macro available in both Linux as well as Windows - MSCV
+  # environment. Easy to put Debug specific code.
 endif(UNIX)
 
 #
@@ -161,26 +159,25 @@ include(cmake/Doxygen.cmake)
 # Model project dependencies
 #
 
-
 if(${${PROJECT_NAME}_BUILD_HEADERS_ONLY})
-
 
   if(${${PROJECT_NAME}_ENABLE_CPM})
     include(cmake/get_CPM.cmake)
+    set(an_inverted_${PROJECT_NAME}_USE_HEADER_ONLY_FMTLIB NOT ${${PROJECT_NAME}_USE_HEADER_ONLY_FMTLIB})
+    set(fmtlib_VERSION 11.0.2)
     cpmaddpackage(
       NAME
       fmt
       VERSION
-      9.1.0
+      ${fmtlib_VERSION}
       EXCLUDE_FROM_ALL
       NO
       SYSTEM
       YES
       URL
-      "https://github.com/fmtlib/fmt/archive/refs/tags/9.1.0.tar.gz"
+      "https://github.com/fmtlib/fmt/archive/refs/tags/${fmtlib_VERSION}.tar.gz"
       OPTIONS
-      FMT_INSTALL
-      YES)
+      "FMT_INSTALL YES" "FMT_MODULE ${an_inverted_${PROJECT_NAME}_USE_HEADER_ONLY_FMTLIB}")
   elseif(${${PROJECT_NAME}_ENABLE_VCPKG})
     find_package(fmt CONFIG REQUIRED)
   elseif(${${PROJECT_NAME}_ENABLE_CONAN})
@@ -194,11 +191,9 @@ if(${${PROJECT_NAME}_BUILD_HEADERS_ONLY})
     target_link_libraries(${PROJECT_NAME} INTERFACE fmt::fmt)
   endif()
 
-
   find_package(Threads)
 
   target_link_libraries(${PROJECT_NAME} INTERFACE Threads::Threads)
-
 
 endif()
 

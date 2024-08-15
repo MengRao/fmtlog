@@ -32,7 +32,9 @@ CPMAddPackage(
     TAG master
     OPTIONS 
         "fmtlog_ENABLE_CPM ON"
+        "fmtlog_ENABLE_HEADER_ONLY OFF"
         "fmtlog_CLANG_FORMAT_BINARY OFF"
+        "fmtlog_USE_HEADER_ONLY_FMTLIB OFF"
 )
 
 target_link_libraries(<your_target_name> [PRIVATE/PUBLIC/INTERFACE] fmtlog::fmtlog)

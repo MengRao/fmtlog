@@ -547,7 +547,7 @@ void fmtlogT<_>::setLogFile(const char* filename, bool truncate) {
   FILE* newFp = fopen(filename, truncate ? "w" : "a");
   if (!newFp) {
     std::string err = fmt::format("Unable to open file: {}: {}", filename, strerror(errno));
-    fmt::detail::throw_format_error(err.c_str());
+    fmt::throw_format_error(err.c_str());
   }
   setbuf(newFp, nullptr);
   d.fpos = ftell(newFp);
