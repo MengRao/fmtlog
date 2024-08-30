@@ -177,7 +177,8 @@ if(${${PROJECT_NAME}_BUILD_HEADERS_ONLY})
       URL
       "https://github.com/fmtlib/fmt/archive/refs/tags/${fmtlib_VERSION}.tar.gz"
       OPTIONS
-      "FMT_INSTALL YES" "FMT_MODULE ${an_inverted_${PROJECT_NAME}_USE_HEADER_ONLY_FMTLIB}")
+      "FMT_INSTALL YES" "FMT_MODULE
+      ${an_inverted_${PROJECT_NAME}_USE_HEADER_ONLY_FMTLIB}" "FMT_OS ${an_inverted_${PROJECT_NAME}_USE_HEADER_ONLY_FMTLIB}")
   elseif(${${PROJECT_NAME}_ENABLE_VCPKG})
     find_package(fmt CONFIG REQUIRED)
   elseif(${${PROJECT_NAME}_ENABLE_CONAN})
