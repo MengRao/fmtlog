@@ -1,5 +1,14 @@
 set(@PROJECT_NAME@_VERSION @PROJECT_VERSION@)
 
+include(CMakeFindDependencyMacro)
+
+string(REGEX MATCHALL "[^;]+" SEPARATE_DEPENDENCIES "fmt")
+
+foreach(dependency ${SEPARATE_DEPENDENCIES})
+  string(REPLACE " " ";" args "${dependency}")
+  find_dependency(${args})
+endforeach()
+
 @PACKAGE_INIT@
 
 set_and_check(@PROJECT_NAME@_INCLUDE_DIR "@CMAKE_INSTALL_INCLUDEDIR@")
