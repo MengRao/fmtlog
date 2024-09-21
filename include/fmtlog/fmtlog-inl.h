@@ -442,7 +442,7 @@ public:
       auto& node = bgThreadBuffers[i];
       if (node.header) continue;
       node.header = node.tb->varq.front();
-      if (!node.header && node.tb->shouldDeallocate) {
+      if (node.tb->shouldDeallocate) {
         delete node.tb;
         node = bgThreadBuffers.back();
         bgThreadBuffers.pop_back();
