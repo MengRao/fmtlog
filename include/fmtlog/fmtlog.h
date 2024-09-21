@@ -24,6 +24,7 @@ SOFTWARE.
 #pragma once
 //#define FMT_HEADER_ONLY
 #include "fmt/format.h"
+#include <algorithm>
 #include <type_traits>
 #include <vector>
 #include <chrono>
@@ -609,15 +610,16 @@ public:
   }
 
   template<bool Reorder, typename... Args>
-  static fmt::string_view unNameFormat(fmt::string_view in, uint32_t* reorderIdx,
+  static std::string unNameFormat(fmt::string_view in, uint32_t* reorderIdx,
                                        const Args&... args) {
     constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
     if constexpr (num_named_args == 0) {
-      return in;
+      return std::string{in.begin(),in.end()};
     }
     const char* begin = in.data();
     const char* p = begin;
-    std::unique_ptr<char[]> unnamed_str(new char[in.size() + 1 + num_named_args * 5]);
+    std::size_t size_unnamed_str = in.size() + 1 + num_named_args * 5;
+    auto unnamed_str = std::make_unique<char[]>(size_unnamed_str);
     fmt::detail::named_arg_info<char> named_args[std::max(num_named_args, (size_t)1)];
     storeNamedArgs<0, 0>(named_args, args...);
 
@@ -663,8 +665,11 @@ public:
       }
       begin = p;
     }
-    const char* ptr = unnamed_str.release();
-    return fmt::string_view(ptr, out - ptr);
+    std::string result;
+    result.reserve(size_unnamed_str);
+    std::string_view ptr_span(unnamed_str.get(),size_unnamed_str);
+    std::copy_n(ptr_span.begin(),out - unnamed_str.get(),std::back_inserter(result));
+    return result;
   }
 
 public:
