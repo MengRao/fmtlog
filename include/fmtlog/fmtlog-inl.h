@@ -103,10 +103,10 @@ public:
     setHeaderPattern("{HMSf} {s:<16} {l}[{t:<6}] ");
     logInfos.reserve(32);
     bgLogInfos.reserve(128);
-    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::DBG, fmt::string_view());
-    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::INF, fmt::string_view());
-    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::WRN, fmt::string_view());
-    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::ERR, fmt::string_view());
+    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::DBG, std::string{});
+    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::INF, std::string{});
+    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::WRN, std::string{});
+    bgLogInfos.emplace_back(nullptr, nullptr, fmtlog::ERR, std::string{});
     threadBuffers.reserve(8);
     bgThreadBuffers.reserve(8);
     memset(membuf.data(), 0, membuf.capacity());
@@ -118,8 +118,8 @@ public:
     closeLogFile();
   }
 
-  void setHeaderPattern(const char* pattern) {
-    if (shouldDeallocateHeader) delete[] headerPattern.data();
+  void setHeaderPattern(std::string pattern) {
+    // if (shouldDeallocateHeader) delete[] headerPattern.data();
     using namespace fmt::literals;
     for (int i = 0; i < parttenArgSize; i++) {
       reorderIdx[i] = parttenArgSize - 1;
@@ -130,7 +130,7 @@ public:
       "l"_a = fmtlog::LogLevel(), "s"_a = "fmtlog.cc:123", "g"_a = "/home/raomeng/fmtlog/fmtlog.cc:123", "Ymd"_a = "",
       "HMS"_a = "", "HMSe"_a = "", "HMSf"_a = "", "HMSF"_a = "", "YmdHMS"_a = "", "YmdHMSe"_a = "", "YmdHMSf"_a = "",
       "YmdHMSF"_a = "");
-    shouldDeallocateHeader = headerPattern.data() != pattern;
+    // shouldDeallocateHeader = headerPattern.data() != pattern;
 
     setArg<0>(fmt::string_view(weekdayName.s, 3));
     setArg<1>(fmt::string_view(monthName.s, 3));
@@ -177,7 +177,7 @@ public:
   struct StaticLogInfo
   {
     // Constructor
-    constexpr StaticLogInfo(fmtlog::FormatToFn fn, const char* loc, fmtlog::LogLevel level, fmt::string_view fmtString)
+    StaticLogInfo(fmtlog::FormatToFn fn, const char* loc, fmtlog::LogLevel level, std::string fmtString)
       : formatToFn(fn)
       , formatString(fmtString)
       , location(loc)
@@ -207,7 +207,7 @@ public:
     inline fmt::string_view getLocation() { return fmt::string_view(location, endPos); }
 
     fmtlog::FormatToFn formatToFn;
-    fmt::string_view formatString;
+    std::string formatString;
     const char* location;
     uint8_t basePos;
     uint8_t endPos;
@@ -217,7 +217,7 @@ public:
 
   static thread_local ThreadBufferDestroyer sbc;
   int64_t midnightNs;
-  fmt::string_view headerPattern;
+  std::string headerPattern;
   bool shouldDeallocateHeader = false;
   FILE* outputFp = nullptr;
   bool manageFp = false;
@@ -494,7 +494,7 @@ fmtlogDetailT<> fmtlogDetailWrapper<_>::impl;
 
 template<int _>
 void fmtlogT<_>::registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location,
-                                 LogLevel level, fmt::string_view fmtString) noexcept {
+                                 LogLevel level, std::string fmtString) noexcept {
   auto& d = fmtlogDetailWrapper<>::impl;
   std::lock_guard<std::mutex> lock(d.logInfoMutex);
   if (logId) return;

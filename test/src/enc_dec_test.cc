@@ -56,7 +56,7 @@ void test(const S& format, Args&&... args) {
   string ans = fmt::format(fmt::runtime(sv), std::forward<Args>(args)...);
   assert(ans.size() == formatted_size);
 
-  auto unnamed_format = fmtlog::unNameFormat<false>(sv, nullptr, args...);
+  auto unnamed_format = fmtlog::unNameFormat<false>(format, nullptr, args...);
   fmt::print("unnamed_format: {}\n", unnamed_format);
   size_t cstringSizes[1000];
   char buf[1024];
