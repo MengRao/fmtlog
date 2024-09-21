@@ -370,5 +370,6 @@ MigrationBackup/
 .cache/
 
 cmake_build*/
+build*/
 
 compile_commands.json
