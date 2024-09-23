@@ -1,15 +1,19 @@
-#include "fmtlog/fmtlog.h"
-#include "fmt/ranges.h"
 #include <assert.h>
+
 #include <iostream>
+
+#include "fmt/ranges.h"
+#include "fmtlog/fmtlog.h"
 using namespace std;
 using namespace fmt::literals;
 
 struct MyType
 {
-  MyType(int val)
-    : v(val) {}
-  ~MyType() {
+  MyType(int val) : v(val)
+  {
+  }
+  ~MyType()
+  {
     dtor_cnt++;
     // fmt::print("dtor_cnt: {}\n", dtor_cnt);
   }
@@ -24,16 +28,18 @@ struct fmt::formatter<MyType> : formatter<int>
 {
   // parse is inherited from formatter<string_view>.
   template<typename FormatContext>
-  auto format(const MyType& val, FormatContext& ctx) const {
+  auto format(const MyType& val, FormatContext& ctx) const
+  {
     return formatter<int>::format(val.v, ctx);
   }
 };
 
 struct MovableType
 {
-public:
-  MovableType(int v = 0)
-    : val{MyType(v)} {}
+ public:
+  MovableType(int v = 0) : val{ MyType(v) }
+  {
+  }
 
   std::vector<MyType> val;
 };
@@ -43,13 +49,15 @@ struct fmt::formatter<MovableType> : formatter<int>
 {
   // parse is inherited from formatter<string_view>.
   template<typename FormatContext>
-  auto format(const MovableType& val, FormatContext& ctx) const {
+  auto format(const MovableType& val, FormatContext& ctx) const
+  {
     return formatter<int>::format(val.val[0].v, ctx);
   }
 };
 
 template<typename S, typename... Args>
-void test(const S& format, Args&&... args) {
+void test(const S& format, Args&&... args)
+{
   fmt::detail::check_format_string<Args...>(format);
   auto sv = fmt::string_view(format);
   size_t formatted_size = fmt::formatted_size(fmt::runtime(sv), std::forward<Args>(args)...);
@@ -77,7 +85,8 @@ void test(const S& format, Args&&... args) {
   assert(res == ans);
 }
 
-int main() {
+int main()
+{
   char cstring[100] = "cstring cstring";
   const char* p = "haha";
   const char* pcstring = cstring;
@@ -90,17 +99,38 @@ int main() {
   float f = 55.2;
   uint16_t short_int = 2222;
 
-  test("test basic types: {}, {}, {}, {}, {}, {}, {}, {}, {:.1f}, {}, {}, {}, {}, {}, {}, {}", cstring, p, pcstring,
-       "wow", 'a', 5, str, string_view(str), 1.34, ch, ch2, i, ri, d, f, short_int);
+  test(
+      "test basic types: {}, {}, {}, {}, {}, {}, {}, {}, {:.1f}, {}, {}, {}, {}, {}, {}, {}",
+      cstring,
+      p,
+      pcstring,
+      "wow",
+      'a',
+      5,
+      str,
+      string_view(str),
+      1.34,
+      ch,
+      ch2,
+      i,
+      ri,
+      d,
+      f,
+      short_int);
 
-  test("test positional, {one}, {two:>5}, {three}, {four}, {0:.1f}", 5.012, "three"_a = 3, "two"_a = "two",
-       "one"_a = string("one"), "four"_a = string("4"));
+  test(
+      "test positional, {one}, {two:>5}, {three}, {four}, {0:.1f}",
+      5.012,
+      "three"_a = 3,
+      "two"_a = "two",
+      "one"_a = string("one"),
+      "four"_a = string("4"));
   test("test dynamic spec: {:.{}f}, {:*^30}", 3.14, 1, "centered");
   test("test positional spec: int: {0:d};  hex: {0:#x};  oct: {0:#o};  bin: {0:#b}", 42);
 
   test("test custom types: {}, {}, {}", MyType(1), MyType(2), MovableType(3));
 
-  test("test ranges: {}, {}", vector<int>{1, 2, 3}, vector<MyType>{4, 5, 6});
+  test("test ranges: {}, {}", vector<int>{ 1, 2, 3 }, vector<MyType>{ 4, 5, 6 });
 
   int dtor_cnt;
   {
@@ -126,4 +156,3 @@ int main() {
 
   return 0;
 }
-
