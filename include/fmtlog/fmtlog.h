@@ -39,9 +39,8 @@ SOFTWARE.
 
 #ifdef _WIN32
 #define FAST_THREAD_LOCAL thread_local
-#include <processthreadsapi.h>
 #include <windows.h>
-
+#include <processthreadsapi.h>
 #else
 #define FAST_THREAD_LOCAL __thread
 #endif
