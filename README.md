@@ -1,3 +1,8 @@
+[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/MacOS/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Windows/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Ubuntu/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+[![Actions Status](https:github.com/Arniiiii/fmtlog_cmake_fix/workflows/Style/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
 # fmtlog
 fmtlog is a performant asynchronous header-only logging library using [fmt](https://github.com/fmtlib/fmt) library format.
 
