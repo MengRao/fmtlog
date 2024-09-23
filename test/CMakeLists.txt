@@ -36,7 +36,6 @@ foreach(source ${sources})
   add_executable(${PROJECT_NAME}_test_${name}
                  ${CMAKE_CURRENT_SOURCE_DIR}/src/${source})
   target_link_libraries(${PROJECT_NAME}_test_${name} PRIVATE fmtlog::fmtlog)
-  target_link_libraries(${PROJECT_NAME}_test_${name} PRIVATE gtest_main)
   set_target_properties(${PROJECT_NAME}_test_${name} PROPERTIES CXX_STANDARD 17)
   add_test(NAME ${PROJECT_NAME}_test_${name}
            COMMAND ${PROJECT_NAME}_test_${name})
