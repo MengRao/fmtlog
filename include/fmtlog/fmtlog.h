@@ -39,7 +39,8 @@ SOFTWARE.
 
 #ifdef _WIN32
 #define FAST_THREAD_LOCAL thread_local
-// #include <windows.h>
+#include <processthreadsapi.h>
+#include <windows.h>
 
 #else
 #define FAST_THREAD_LOCAL __thread
@@ -969,4 +970,4 @@ inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) noexcept
 #define logel(min_interval, format, ...) (void)0
 #endif
 
-#include "fmtlog-inl.h"
+#include "fmtlog/internal/fmtlog-inl.h"

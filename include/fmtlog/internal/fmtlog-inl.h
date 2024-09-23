@@ -29,7 +29,7 @@ SOFTWARE.
 #include <mutex>
 #include <thread>
 
-#include "fmtlog.h"
+#include "fmtlog/fmtlog.h"
 
 #ifdef _WIN32
 #ifndef NOMINMAX
