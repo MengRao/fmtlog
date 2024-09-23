@@ -39,6 +39,8 @@ SOFTWARE.
 
 #ifdef _WIN32
 #define FAST_THREAD_LOCAL thread_local
+#include <windows.h>
+
 #else
 #define FAST_THREAD_LOCAL __thread
 #endif
