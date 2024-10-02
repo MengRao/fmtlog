@@ -46,7 +46,7 @@ fmtlog is a performant asynchronous header-only logging library using [fmt](http
 ## Install
 C++17 is required, and fmtlog is dependent on [fmtlib](https://github.com/fmtlib/fmt), you need to install fmtlib first if you haven't.
 #### Add headers manually
-Just copy `include/fmtlog/fmtlog.h` and `include/fmtlog/fmtlog-inl.h` to your project and somehow link `fmtlib`.
+Just copy `include/fmtlog/fmtlog.h` and `include/fmtlog/internal/fmtlog-inl.h` to your project and somehow link `fmtlib`.
 ### CMake
 If you are using CMake, there's some options to add library, and some options to link fmtlib  
 #### How to add library?  
@@ -58,11 +58,6 @@ CPMAddPackage(
     NAME fmtlog 
     GIT_REPOSITORY "https://github.com/Arniiiii/fmtlog_cmake_fix.git"
     TAG master
-    OPTIONS 
-        "fmtlog_ENABLE_CPM ON"
-        "fmtlog_ENABLE_HEADER_ONLY OFF"
-        "fmtlog_CLANG_FORMAT_BINARY OFF"
-        "fmtlog_USE_HEADER_ONLY_FMTLIB OFF"
 )
 
 target_link_libraries(<your_target_name> [PRIVATE/PUBLIC/INTERFACE] fmtlog::fmtlog)
@@ -71,11 +66,7 @@ target_link_libraries(<your_target_name> [PRIVATE/PUBLIC/INTERFACE] fmtlog::fmtl
 We do **not** recommend do that. Use CPM instead.  
 ###### Have it somewhere at your repo  
 We do **not** recommend do that. Use CPM instead. 
-##### Get the lib as "package"
-###### vcpkg
-Right now it's not added to vcpkg.io , but wait, the process maybe in progress...
-###### conan
-Right now it's not added to conan.io , but wait, the process maybe in progress...  
+
 #### How to link fmtlib?  
 
 - Through the fmtlog library  
@@ -83,14 +74,8 @@ Right now it's not added to conan.io , but wait, the process maybe in progress..
 ##### How to link fmtlib through fmtlog library?
 There's next options:  
 
-- somehow add option `fmtlog_ENABLE_CPM ON` to add fmtlib through CPM.
-	+ if you want to use system's fmt: add `CPM_USE_LOCAL_PACKAGES ON` or add `CPM_LOCAL_PACKAGES_ONLY ON`  
-	+ if you want to download the fmtlib and everything that you can have from CPM  and compile all of it yourself everytime (consider installing `ccache`), add nothing or add `CPM_DOWNLOAD_ALL ON` .  
-	+ if you want to use header-only fmt lib, there's option `fmtlog_USE_HEADER_ONLY_FMTLIB`  
-- vcpkg
-	+ work in progress to add it to vcpkg.  
-- conan
-	+ work in progress to add it to conan center. 
++ if you want to use system's fmt: add `CPM_USE_LOCAL_PACKAGES ON` or add `CPM_LOCAL_PACKAGES_ONLY ON`  
++ if you want to download the fmtlib and everything that you can have from CPM  and compile all of it yourself everytime (consider installing `ccache`), add nothing or add `CPM_DOWNLOAD_ALL ON` .  
 
 ## CMake options  
 Check them at `cmake/StandardSettings.cmake`  .
