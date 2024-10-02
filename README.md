@@ -4,7 +4,7 @@ MacOS: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows
 
 MSVC Windows:[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Windows/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
 
-Is clang-format and cmake-format used everywhere: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Style/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+Are clang-format and cmake-format used everywhere: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Style/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
 
 Is installable if dependencies are installed on system: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Install/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
 
