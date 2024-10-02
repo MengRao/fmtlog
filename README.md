@@ -1,7 +1,30 @@
-[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/MacOS/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
-[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Windows/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
-[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Ubuntu/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
-[![Actions Status](https:github.com/Arniiiii/fmtlog_cmake_fix/workflows/Style/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+Ubuntu latest: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Ubuntu/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+MacOS: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/MacOS/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+MSVC Windows:[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Windows/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+Is clang-format and cmake-format used everywhere: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Style/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+Is installable if dependencies are installed on system: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Install/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+Is installable if dependencies are downloaded at configure time via CPM_DOWNLOAD_ALL=1 : [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Install_CPM_DOWNLOAD_ALL/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+
+# Important
+
+I ( Arniiiii ) don't like the code from the project.
+I won't use the log library again.
+
+Why:
+ - It has 324 warnings just from tests.
+ - The code uses `reinterpret_cast` like cast via C to get access to private members of some fmt classes
+ - It had a memory leak which I tried to fix. Now it requires `fmtlog::poll()` every time to get it write to at an output. 
+ - A test at Windows with MSVC just runs forever and I don't know why.
+
+# What you can use instead?
+
+On Quill's README there are some benchmark results for some log libraries you may want, so I will choose an another o    ne.
 
 # fmtlog
 fmtlog is a performant asynchronous header-only logging library using [fmt](https://github.com/fmtlib/fmt) library format.
