@@ -35,11 +35,13 @@ SOFTWARE.
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <processthreadsapi.h>
 #include <windows.h>
+
+#include <processthreadsapi.h>
 #else
-#include <sys/syscall.h>
 #include <unistd.h>
+
+#include <sys/syscall.h>
 #endif
 
 namespace

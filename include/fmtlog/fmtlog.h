@@ -28,8 +28,8 @@ SOFTWARE.
 #include <chrono>
 #include <memory>
 #include <thread>
-#include <type_traits>
 #include <vector>
+#include <type_traits>
 
 #include "fmt/format.h"
 
@@ -39,8 +39,6 @@ SOFTWARE.
 
 #ifdef _WIN32
 #define FAST_THREAD_LOCAL thread_local
-#include <windows.h>
-#include <processthreadsapi.h>
 #else
 #define FAST_THREAD_LOCAL __thread
 #endif

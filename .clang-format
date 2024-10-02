@@ -21,4 +21,36 @@ SpaceBeforeParens: ControlStatements
 SpaceBeforeRangeBasedForLoopColon: 'true'
 SpaceInEmptyBlock: true
 Standard: 'Latest'
+IncludeCategories:
+  - Regex:           '^"(llvm|llvm-c|clang|clang-c)/'
+    Priority:        1
+    SortPriority:    3
+    CaseSensitive:   true
+  - Regex:           '^(<|")(windows.h)'
+    Priority:        1
+    SortPriority:    1
+  - Regex:           '^(<|")(processthreadsapi.h)'
+    Priority:        2
+    SortPriority:    2
+  - Regex:           '<[[:alnum:].]+>'
+    Priority:        5
+    SortPriority:    1
+  - Regex:           '<[[:alnum:].]+_+[[:alnum:].]+>'
+    Priority:        5
+    SortPriority:    4
+  - Regex:           '^((<|")(gtest|gmock|isl|json)/)'
+    Priority:        8
+    SortPriority:    5
+  - Regex:           '^((<|")(fmt/|fmtlog/))'
+    Priority:        11
+    SortPriority:    6
+  - Regex:           '^(<|")(arby)'
+    Priority:        8
+    SortPriority:    100
+  - Regex:           '^(<|")./'
+    Priority:        10
+    SortPriority:    101
+  - Regex:           '^(<|")(.*)'
+    Priority:        15
+    SortPriority:    7
 ...
