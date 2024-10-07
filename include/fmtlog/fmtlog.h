@@ -22,14 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 #pragma once
-//#define FMT_HEADER_ONLY
-#include "fmt/format.h"
-#include <type_traits>
-#include <vector>
-#include <chrono>
+// #define FMT_HEADER_ONLY
+#include <algorithm>
 #include <atomic>
-#include <thread>
+#include <chrono>
 #include <memory>
+#include <thread>
+#include <vector>
+#include <type_traits>
+
+#include "fmt/format.h"
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -61,37 +63,50 @@ SOFTWARE.
 #define FMTLOG_QUEUE_SIZE (1 << 20)
 #endif
 
-namespace fmtlogdetail {
-template<typename Arg>
-struct UnrefPtr : std::false_type
-{ using type = Arg; };
+namespace fmtlogdetail
+{
+  template<typename Arg>
+  struct UnrefPtr : std::false_type
+  {
+    using type = Arg;
+  };
 
-template<>
-struct UnrefPtr<char*> : std::false_type
-{ using type = char*; };
+  template<>
+  struct UnrefPtr<char*> : std::false_type
+  {
+    using type = char*;
+  };
 
-template<>
-struct UnrefPtr<void*> : std::false_type
-{ using type = void*; };
+  template<>
+  struct UnrefPtr<void*> : std::false_type
+  {
+    using type = void*;
+  };
 
-template<typename Arg>
-struct UnrefPtr<std::shared_ptr<Arg>> : std::true_type
-{ using type = Arg; };
+  template<typename Arg>
+  struct UnrefPtr<std::shared_ptr<Arg>> : std::true_type
+  {
+    using type = Arg;
+  };
 
-template<typename Arg, typename D>
-struct UnrefPtr<std::unique_ptr<Arg, D>> : std::true_type
-{ using type = Arg; };
+  template<typename Arg, typename D>
+  struct UnrefPtr<std::unique_ptr<Arg, D>> : std::true_type
+  {
+    using type = Arg;
+  };
 
-template<typename Arg>
-struct UnrefPtr<Arg*> : std::true_type
-{ using type = Arg; };
+  template<typename Arg>
+  struct UnrefPtr<Arg*> : std::true_type
+  {
+    using type = Arg;
+  };
 
-}; // namespace fmtlogdetail
+};  // namespace fmtlogdetail
 
 template<int __ = 0>
 class fmtlogT
 {
-public:
+ public:
   enum LogLevel : uint8_t
   {
     DBG = 0,
@@ -135,9 +150,15 @@ public:
   // msg: full log msg with header
   // bodyPos: log body index in the msg
   // logFilePos: log file position of this msg
-  typedef void (*LogCBFn)(int64_t ns, LogLevel level, fmt::string_view location, size_t basePos,
-                          fmt::string_view threadName, fmt::string_view msg, size_t bodyPos,
-                          size_t logFilePos);
+  typedef void (*LogCBFn)(
+      int64_t ns,
+      LogLevel level,
+      fmt::string_view location,
+      size_t basePos,
+      fmt::string_view threadName,
+      fmt::string_view msg,
+      size_t bodyPos,
+      size_t logFilePos);
 
   // Set a callback function for all log msgs with a mininum log level
   static void setLogCB(LogCBFn cb, LogLevel minCBLogLevel) noexcept;
@@ -174,10 +195,13 @@ public:
   // https://github.com/MengRao/SPSC_Queue
   class SPSCVarQueueOPT
   {
-  public:
+   public:
     struct MsgHeader
     {
-      inline void push(uint32_t sz) { *(volatile uint32_t*)&size = sz + sizeof(MsgHeader); }
+      inline void push(uint32_t sz)
+      {
+        *(volatile uint32_t*)&size = sz + sizeof(MsgHeader);
+      }
 
       uint32_t size;
       uint32_t logId;
@@ -186,24 +210,30 @@ public:
 
     MsgHeader* allocMsg(uint32_t size) noexcept;
 
-    MsgHeader* alloc(uint32_t size) {
+    MsgHeader* alloc(uint32_t size)
+    {
       size += sizeof(MsgHeader);
       uint32_t blk_sz = (size + sizeof(MsgHeader) - 1) / sizeof(MsgHeader);
-      if (blk_sz >= free_write_cnt) {
+      if (blk_sz >= free_write_cnt)
+      {
         uint32_t read_idx_cache = *(volatile uint32_t*)&read_idx;
-        if (read_idx_cache <= write_idx) {
+        if (read_idx_cache <= write_idx)
+        {
           free_write_cnt = BLK_CNT - write_idx;
-          if (blk_sz >= free_write_cnt && read_idx_cache != 0) { // wrap around
+          if (blk_sz >= free_write_cnt && read_idx_cache != 0)
+          {  // wrap around
             blk[0].size = 0;
             blk[write_idx].size = 1;
             write_idx = 0;
             free_write_cnt = read_idx_cache;
           }
         }
-        else {
+        else
+        {
           free_write_cnt = read_idx_cache - write_idx;
         }
-        if (free_write_cnt <= blk_sz) {
+        if (free_write_cnt <= blk_sz)
+        {
           return nullptr;
         }
       }
@@ -214,22 +244,26 @@ public:
       return ret;
     }
 
-    inline const MsgHeader* front() {
+    inline const MsgHeader* front()
+    {
       uint32_t size = blk[read_idx].size;
-      if (size == 1) { // wrap around
+      if (size == 1)
+      {  // wrap around
         read_idx = 0;
         size = blk[0].size;
       }
-      if (size == 0) return nullptr;
+      if (size == 0)
+        return nullptr;
       return &blk[read_idx];
     }
 
-    inline void pop() {
+    inline void pop()
+    {
       uint32_t blk_sz = (blk[read_idx].size + sizeof(MsgHeader) - 1) / sizeof(MsgHeader);
       *(volatile uint32_t*)&read_idx = read_idx + blk_sz;
     }
 
-  private:
+   private:
     alignas(64) MsgHeader blk[BLK_CNT] = {};
     uint32_t write_idx = 0;
     uint32_t free_write_cnt = BLK_CNT;
@@ -248,35 +282,39 @@ public:
   // https://github.com/MengRao/tscns
   class TSCNS
   {
-  public:
+   public:
     static const int64_t NsPerSec = 1000000000;
 
-    void init(int64_t init_calibrate_ns = 20000000, int64_t calibrate_interval_ns = 3 * NsPerSec) {
+    void init(int64_t init_calibrate_ns = 20000000, int64_t calibrate_interval_ns = 3 * NsPerSec)
+    {
       calibate_interval_ns_ = calibrate_interval_ns;
       int64_t base_tsc, base_ns;
       syncTime(base_tsc, base_ns);
       int64_t expire_ns = base_ns + init_calibrate_ns;
-      while (rdsysns() < expire_ns) std::this_thread::yield();
+      while (rdsysns() < expire_ns)
+        std::this_thread::yield();
       int64_t delayed_tsc, delayed_ns;
       syncTime(delayed_tsc, delayed_ns);
       double init_ns_per_tsc = (double)(delayed_ns - base_ns) / (delayed_tsc - base_tsc);
       saveParam(base_tsc, base_ns, base_ns, init_ns_per_tsc);
     }
 
-    void calibrate() {
-      if (rdtsc() < next_calibrate_tsc_) return;
+    void calibrate()
+    {
+      if (rdtsc() < next_calibrate_tsc_)
+        return;
       int64_t tsc, ns;
       syncTime(tsc, ns);
       int64_t calulated_ns = tsc2ns(tsc);
       int64_t ns_err = calulated_ns - ns;
       int64_t expected_err_at_next_calibration =
-        ns_err + (ns_err - base_ns_err_) * calibate_interval_ns_ / (ns - base_ns_ + base_ns_err_);
-      double new_ns_per_tsc =
-        ns_per_tsc_ * (1.0 - (double)expected_err_at_next_calibration / calibate_interval_ns_);
+          ns_err + (ns_err - base_ns_err_) * calibate_interval_ns_ / (ns - base_ns_ + base_ns_err_);
+      double new_ns_per_tsc = ns_per_tsc_ * (1.0 - (double)expected_err_at_next_calibration / calibate_interval_ns_);
       saveParam(tsc, calulated_ns, ns, new_ns_per_tsc);
     }
 
-    static inline int64_t rdtsc() {
+    static inline int64_t rdtsc()
+    {
 #ifdef _MSC_VER
       return __rdtsc();
 #elif defined(__i386__) || defined(__x86_64__) || defined(__amd64__)
@@ -286,31 +324,42 @@ public:
 #endif
     }
 
-    inline int64_t tsc2ns(int64_t tsc) const {
-      while (true) {
+    inline int64_t tsc2ns(int64_t tsc) const
+    {
+      while (true)
+      {
         uint32_t before_seq = param_seq_.load(std::memory_order_acquire) & ~1;
         std::atomic_signal_fence(std::memory_order_acq_rel);
         int64_t ns = base_ns_ + (int64_t)((tsc - base_tsc_) * ns_per_tsc_);
         std::atomic_signal_fence(std::memory_order_acq_rel);
         uint32_t after_seq = param_seq_.load(std::memory_order_acquire);
-        if (before_seq == after_seq) return ns;
+        if (before_seq == after_seq)
+          return ns;
       }
     }
 
-    inline int64_t rdns() const { return tsc2ns(rdtsc()); }
+    inline int64_t rdns() const
+    {
+      return tsc2ns(rdtsc());
+    }
 
-    static inline int64_t rdsysns() {
+    static inline int64_t rdsysns()
+    {
       using namespace std::chrono;
       return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
     }
 
-    double getTscGhz() const { return 1.0 / ns_per_tsc_; }
+    double getTscGhz() const
+    {
+      return 1.0 / ns_per_tsc_;
+    }
 
     // Linux kernel sync time by finding the first trial with tsc diff < 50000
     // We try several times and return the one with the mininum tsc diff.
     // Note that MSVC has a 100ns resolution clock, so we need to combine those ns with the same
     // value, and drop the first and the last value as they may not scan a full 100ns range
-    static void syncTime(int64_t& tsc_out, int64_t& ns_out) {
+    static void syncTime(int64_t& tsc_out, int64_t& ns_out)
+    {
 #ifdef _MSC_VER
       const int N = 15;
 #else
@@ -320,15 +369,18 @@ public:
       int64_t ns[N + 1];
 
       tsc[0] = rdtsc();
-      for (int i = 1; i <= N; i++) {
+      for (int i = 1; i <= N; i++)
+      {
         ns[i] = rdsysns();
         tsc[i] = rdtsc();
       }
 
 #ifdef _MSC_VER
       int j = 1;
-      for (int i = 2; i <= N; i++) {
-        if (ns[i] == ns[i - 1]) continue;
+      for (int i = 2; i <= N; i++)
+      {
+        if (ns[i] == ns[i - 1])
+          continue;
         tsc[j - 1] = tsc[i - 1];
         ns[j++] = ns[i];
       }
@@ -338,14 +390,17 @@ public:
 #endif
 
       int best = 1;
-      for (int i = 2; i < j; i++) {
-        if (tsc[i] - tsc[i - 1] < tsc[best] - tsc[best - 1]) best = i;
+      for (int i = 2; i < j; i++)
+      {
+        if (tsc[i] - tsc[i - 1] < tsc[best] - tsc[best - 1])
+          best = i;
       }
       tsc_out = (tsc[best] + tsc[best - 1]) >> 1;
       ns_out = ns[best];
     }
 
-    void saveParam(int64_t base_tsc, int64_t base_ns, int64_t sys_ns, double new_ns_per_tsc) {
+    void saveParam(int64_t base_tsc, int64_t base_ns, int64_t sys_ns, double new_ns_per_tsc)
+    {
       base_ns_err_ = base_ns - sys_ns;
       next_calibrate_tsc_ = base_tsc + (int64_t)((calibate_interval_ns_ - 1000) / new_ns_per_tsc);
       uint32_t seq = param_seq_.load(std::memory_order_relaxed);
@@ -367,18 +422,23 @@ public:
     int64_t next_calibrate_tsc_;
   };
 
-  void init() {
+  void init()
+  {
     tscns.init();
     currentLogLevel = INF;
   }
 
   using Context = fmt::format_context;
   using MemoryBuffer = fmt::basic_memory_buffer<char, 10000>;
-  typedef const char* (*FormatToFn)(fmt::string_view format, const char* data, MemoryBuffer& out,
-                                    int& argIdx, std::vector<fmt::basic_format_arg<Context>>& args);
+  typedef const char* (*FormatToFn)(
+      fmt::string_view format,
+      const char* data,
+      MemoryBuffer& out,
+      int& argIdx,
+      std::vector<fmt::basic_format_arg<Context>>& args);
 
-  static void registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level,
-                              fmt::string_view fmtString) noexcept;
+  static void
+  registerLogInfo(uint32_t& logId, FormatToFn fn, const char* location, LogLevel level, std::string fmtString) noexcept;
 
   static void vformat_to(MemoryBuffer& out, fmt::string_view fmt, fmt::format_args args);
 
@@ -394,100 +454,122 @@ public:
   static FAST_THREAD_LOCAL ThreadBuffer* threadBuffer;
 
   template<typename Arg>
-  static inline constexpr bool isNamedArg() {
+  static inline constexpr bool isNamedArg()
+  {
     return fmt::detail::is_named_arg<fmt::remove_cvref_t<Arg>>::value;
   }
 
   template<typename Arg>
   struct unNamedType
-  { using type = Arg; };
+  {
+    using type = Arg;
+  };
 
   template<typename Arg>
   struct unNamedType<fmt::detail::named_arg<char, Arg>>
-  { using type = Arg; };
+  {
+    using type = Arg;
+  };
 
 #if FMT_USE_NONTYPE_TEMPLATE_ARGS
   template<typename Arg, size_t N, fmt::detail_exported::fixed_string<char, N> Str>
   struct unNamedType<fmt::detail::statically_named_arg<Arg, char, N, Str>>
-  { using type = Arg; };
+  {
+    using type = Arg;
+  };
 #endif
 
   template<typename Arg>
-  static inline constexpr bool isCstring() {
-    return fmt::detail::mapped_type_constant<Arg, Context>::value ==
-           fmt::detail::type::cstring_type;
+  static inline constexpr bool isCstring()
+  {
+    return fmt::detail::mapped_type_constant<Arg, Context>::value == fmt::detail::type::cstring_type;
   }
 
   template<typename Arg>
-  static inline constexpr bool isString() {
+  static inline constexpr bool isString()
+  {
     return fmt::detail::mapped_type_constant<Arg, Context>::value == fmt::detail::type::string_type;
   }
 
   template<typename Arg>
-  static inline constexpr bool needCallDtor() {
+  static inline constexpr bool needCallDtor()
+  {
     using ArgType = fmt::remove_cvref_t<Arg>;
-    if constexpr (isNamedArg<Arg>()) {
+    if constexpr (isNamedArg<Arg>())
+    {
       return needCallDtor<typename unNamedType<ArgType>::type>();
     }
-    if constexpr (isString<Arg>()) return false;
+    if constexpr (isString<Arg>())
+      return false;
     return !std::is_trivially_destructible<ArgType>::value;
   }
 
   template<size_t CstringIdx>
-  static inline constexpr size_t getArgSizes(size_t* cstringSize) {
+  static inline constexpr size_t getArgSizes(size_t* cstringSize)
+  {
     return 0;
   }
 
   template<size_t CstringIdx, typename Arg, typename... Args>
-  static inline constexpr size_t getArgSizes(size_t* cstringSize, const Arg& arg,
-                                             const Args&... args) {
-    if constexpr (isNamedArg<Arg>()) {
+  static inline constexpr size_t getArgSizes(size_t* cstringSize, const Arg& arg, const Args&... args)
+  {
+    if constexpr (isNamedArg<Arg>())
+    {
       return getArgSizes<CstringIdx>(cstringSize, arg.value, args...);
     }
-    else if constexpr (isCstring<Arg>()) {
+    else if constexpr (isCstring<Arg>())
+    {
       size_t len = strlen(arg) + 1;
       cstringSize[CstringIdx] = len;
       return len + getArgSizes<CstringIdx + 1>(cstringSize, args...);
     }
-    else if constexpr (isString<Arg>()) {
+    else if constexpr (isString<Arg>())
+    {
       size_t len = arg.size() + 1;
       return len + getArgSizes<CstringIdx>(cstringSize, args...);
     }
-    else {
+    else
+    {
       return sizeof(Arg) + getArgSizes<CstringIdx>(cstringSize, args...);
     }
   }
 
   template<size_t CstringIdx>
-  static inline constexpr char* encodeArgs(size_t* cstringSize, char* out) {
+  static inline constexpr char* encodeArgs(size_t* cstringSize, char* out)
+  {
     return out;
   }
 
   template<size_t CstringIdx, typename Arg, typename... Args>
-  static inline constexpr char* encodeArgs(size_t* cstringSize, char* out, Arg&& arg,
-                                           Args&&... args) {
-    if constexpr (isNamedArg<Arg>()) {
+  static inline constexpr char* encodeArgs(size_t* cstringSize, char* out, Arg&& arg, Args&&... args)
+  {
+    if constexpr (isNamedArg<Arg>())
+    {
       return encodeArgs<CstringIdx>(cstringSize, out, arg.value, std::forward<Args>(args)...);
     }
-    else if constexpr (isCstring<Arg>()) {
+    else if constexpr (isCstring<Arg>())
+    {
       memcpy(out, arg, cstringSize[CstringIdx]);
-      return encodeArgs<CstringIdx + 1>(cstringSize, out + cstringSize[CstringIdx],
-                                        std::forward<Args>(args)...);
+      return encodeArgs<CstringIdx + 1>(cstringSize, out + cstringSize[CstringIdx], std::forward<Args>(args)...);
     }
-    else if constexpr (isString<Arg>()) {
+    else if constexpr (isString<Arg>())
+    {
       size_t len = arg.size();
       memcpy(out, arg.data(), len);
       out[len] = 0;
       return encodeArgs<CstringIdx>(cstringSize, out + len + 1, std::forward<Args>(args)...);
     }
-    else {
+    else
+    {
       // If Arg has alignment >= 16, gcc could emit aligned move instructions(e.g. movdqa) for
       // placement new even if the *out* is misaligned, which would cause segfault. So we use memcpy
       // when possible
-      if constexpr (std::is_trivially_copyable_v<fmt::remove_cvref_t<Arg>>) {
+      if constexpr (std::is_trivially_copyable_v<fmt::remove_cvref_t<Arg>>)
+      {
         memcpy(out, &arg, sizeof(Arg));
       }
-      else {
+      else
+      {
         new (out) fmt::remove_cvref_t<Arg>(std::forward<Arg>(arg));
       }
       return encodeArgs<CstringIdx>(cstringSize, out + sizeof(Arg), std::forward<Args>(args)...);
@@ -495,111 +577,137 @@ public:
   }
 
   template<size_t Idx, size_t NamedIdx>
-  static inline constexpr void storeNamedArgs(fmt::detail::named_arg_info<char>* named_args_store) {
+  static inline constexpr void storeNamedArgs(fmt::detail::named_arg_info<char>* named_args_store)
+  {
   }
 
   template<size_t Idx, size_t NamedIdx, typename Arg, typename... Args>
-  static inline constexpr void storeNamedArgs(fmt::detail::named_arg_info<char>* named_args_store,
-                                              const Arg& arg, const Args&... args) {
-    if constexpr (isNamedArg<Arg>()) {
-      named_args_store[NamedIdx] = {arg.name, Idx};
+  static inline constexpr void
+  storeNamedArgs(fmt::detail::named_arg_info<char>* named_args_store, const Arg& arg, const Args&... args)
+  {
+    if constexpr (isNamedArg<Arg>())
+    {
+      named_args_store[NamedIdx] = { arg.name, Idx };
       storeNamedArgs<Idx + 1, NamedIdx + 1>(named_args_store, args...);
     }
-    else {
+    else
+    {
       storeNamedArgs<Idx + 1, NamedIdx>(named_args_store, args...);
     }
   }
 
   template<bool ValueOnly, size_t Idx, size_t DestructIdx>
-  static inline const char* decodeArgs(const char* in, fmt::basic_format_arg<Context>* args,
-                                       const char** destruct_args) {
+  static inline const char* decodeArgs(const char* in, fmt::basic_format_arg<Context>* args, const char** destruct_args)
+  {
     return in;
   }
 
   template<bool ValueOnly, size_t Idx, size_t DestructIdx, typename Arg, typename... Args>
-  static inline const char* decodeArgs(const char* in, fmt::basic_format_arg<Context>* args,
-                                       const char** destruct_args) {
+  static inline const char* decodeArgs(const char* in, fmt::basic_format_arg<Context>* args, const char** destruct_args)
+  {
     using namespace fmtlogdetail;
     using ArgType = fmt::remove_cvref_t<Arg>;
-    if constexpr (isNamedArg<ArgType>()) {
-      return decodeArgs<ValueOnly, Idx, DestructIdx, typename unNamedType<ArgType>::type, Args...>(
-        in, args, destruct_args);
+    if constexpr (isNamedArg<ArgType>())
+    {
+      return decodeArgs<ValueOnly, Idx, DestructIdx, typename unNamedType<ArgType>::type, Args...>(in, args, destruct_args);
     }
-    else if constexpr (isCstring<Arg>() || isString<Arg>()) {
+    else if constexpr (isCstring<Arg>() || isString<Arg>())
+    {
       size_t size = strlen(in);
       fmt::string_view v(in, size);
-      if constexpr (ValueOnly) {
+      if constexpr (ValueOnly)
+      {
         fmt::detail::value<Context>& value_ = *(fmt::detail::value<Context>*)(args + Idx);
         value_ = fmt::detail::arg_mapper<Context>().map(v);
       }
-      else {
+      else
+      {
         args[Idx] = fmt::detail::make_arg<Context>(v);
       }
-      return decodeArgs<ValueOnly, Idx + 1, DestructIdx, Args...>(in + size + 1, args,
-                                                                  destruct_args);
+      return decodeArgs<ValueOnly, Idx + 1, DestructIdx, Args...>(in + size + 1, args, destruct_args);
     }
-    else {
-      if constexpr (ValueOnly) {
+    else
+    {
+      if constexpr (ValueOnly)
+      {
         fmt::detail::value<Context>& value_ = *(fmt::detail::value<Context>*)(args + Idx);
-        if constexpr (UnrefPtr<ArgType>::value) {
+        if constexpr (UnrefPtr<ArgType>::value)
+        {
           value_ = fmt::detail::arg_mapper<Context>().map(**(ArgType*)in);
         }
-        else {
+        else
+        {
           value_ = fmt::detail::arg_mapper<Context>().map(*(ArgType*)in);
         }
       }
-      else {
-        if constexpr (UnrefPtr<ArgType>::value) {
+      else
+      {
+        if constexpr (UnrefPtr<ArgType>::value)
+        {
           args[Idx] = fmt::detail::make_arg<Context>(**(ArgType*)in);
         }
-        else {
+        else
+        {
           args[Idx] = fmt::detail::make_arg<Context>(*(ArgType*)in);
         }
       }
 
-      if constexpr (needCallDtor<Arg>()) {
+      if constexpr (needCallDtor<Arg>())
+      {
         destruct_args[DestructIdx] = in;
-        return decodeArgs<ValueOnly, Idx + 1, DestructIdx + 1, Args...>(in + sizeof(ArgType), args,
-                                                                        destruct_args);
+        return decodeArgs<ValueOnly, Idx + 1, DestructIdx + 1, Args...>(in + sizeof(ArgType), args, destruct_args);
       }
-      else {
-        return decodeArgs<ValueOnly, Idx + 1, DestructIdx, Args...>(in + sizeof(ArgType), args,
-                                                                    destruct_args);
+      else
+      {
+        return decodeArgs<ValueOnly, Idx + 1, DestructIdx, Args...>(in + sizeof(ArgType), args, destruct_args);
       }
     }
   }
 
   template<size_t DestructIdx>
-  static inline void destructArgs(const char** destruct_args) {}
+  static inline void destructArgs(const char** destruct_args)
+  {
+  }
 
   template<size_t DestructIdx, typename Arg, typename... Args>
-  static inline void destructArgs(const char** destruct_args) {
+  static inline void destructArgs(const char** destruct_args)
+  {
     using ArgType = fmt::remove_cvref_t<Arg>;
-    if constexpr (isNamedArg<ArgType>()) {
+    if constexpr (isNamedArg<ArgType>())
+    {
       destructArgs<DestructIdx, typename unNamedType<ArgType>::type, Args...>(destruct_args);
     }
-    else if constexpr (needCallDtor<Arg>()) {
+    else if constexpr (needCallDtor<Arg>())
+    {
       ((ArgType*)destruct_args[DestructIdx])->~ArgType();
       destructArgs<DestructIdx + 1, Args...>(destruct_args);
     }
-    else {
+    else
+    {
       destructArgs<DestructIdx, Args...>(destruct_args);
     }
   }
 
   template<typename... Args>
-  static const char* formatTo(fmt::string_view format, const char* data, MemoryBuffer& out,
-                              int& argIdx, std::vector<fmt::basic_format_arg<Context>>& args) {
+  static const char* formatTo(
+      fmt::string_view format,
+      const char* data,
+      MemoryBuffer& out,
+      int& argIdx,
+      std::vector<fmt::basic_format_arg<Context>>& args)
+  {
     constexpr size_t num_args = sizeof...(Args);
     constexpr size_t num_dtors = fmt::detail::count<needCallDtor<Args>()...>();
     const char* dtor_args[std::max(num_dtors, (size_t)1)];
     const char* ret;
-    if (argIdx < 0) {
+    if (argIdx < 0)
+    {
       argIdx = (int)args.size();
       args.resize(argIdx + num_args);
       ret = decodeArgs<false, 0, 0, Args...>(data, args.data() + argIdx, dtor_args);
     }
-    else {
+    else
+    {
       ret = decodeArgs<true, 0, 0, Args...>(data, args.data() + argIdx, dtor_args);
     }
     vformat_to(out, format, fmt::basic_format_args(args.data() + argIdx, num_args));
@@ -609,80 +717,105 @@ public:
   }
 
   template<bool Reorder, typename... Args>
-  static fmt::string_view unNameFormat(fmt::string_view in, uint32_t* reorderIdx,
-                                       const Args&... args) {
+  static std::string unNameFormat(std::string in, uint32_t* reorderIdx, const Args&... args)
+  {
     constexpr size_t num_named_args = fmt::detail::count<isNamedArg<Args>()...>();
-    if constexpr (num_named_args == 0) {
+    if constexpr (num_named_args == 0)
+    {
       return in;
     }
     const char* begin = in.data();
     const char* p = begin;
-    std::unique_ptr<char[]> unnamed_str(new char[in.size() + 1 + num_named_args * 5]);
+    std::size_t size_unnamed_str = in.size() + 1 + num_named_args * 5;
+    auto unnamed_str = std::make_unique<char[]>(size_unnamed_str);
     fmt::detail::named_arg_info<char> named_args[std::max(num_named_args, (size_t)1)];
     storeNamedArgs<0, 0>(named_args, args...);
 
     char* out = (char*)unnamed_str.get();
     uint8_t arg_idx = 0;
-    while (true) {
+    while (true)
+    {
       auto c = *p++;
-      if (!c) {
+      if (!c)
+      {
         size_t copy_size = p - begin - 1;
         memcpy(out, begin, copy_size);
         out += copy_size;
         break;
       }
-      if (c != '{') continue;
+      if (c != '{')
+        continue;
       size_t copy_size = p - begin;
       memcpy(out, begin, copy_size);
       out += copy_size;
       begin = p;
       c = *p++;
-      if (!c) fmt::detail::throw_format_error("invalid format string");
-      if (fmt::detail::is_name_start(c)) {
-        while ((fmt::detail::is_name_start(c = *p) || ('0' <= c && c <= '9'))) {
+      if (!c)
+        fmt::throw_format_error("invalid format string");
+      if (fmt::detail::is_name_start(c))
+      {
+        while ((fmt::detail::is_name_start(c = *p) || ('0' <= c && c <= '9')))
+        {
           ++p;
         }
         fmt::string_view name(begin, p - begin);
         int id = -1;
-        for (size_t i = 0; i < num_named_args; ++i) {
-          if (named_args[i].name == name) {
+        for (size_t i = 0; i < num_named_args; ++i)
+        {
+          if (named_args[i].name == name)
+          {
             id = named_args[i].id;
             break;
           }
         }
-        if (id < 0) fmt::detail::throw_format_error("invalid format string");
-        if constexpr (Reorder) {
+        if (id < 0)
+          fmt::throw_format_error("invalid format string");
+        if constexpr (Reorder)
+        {
           reorderIdx[id] = arg_idx++;
         }
-        else {
+        else
+        {
           out = fmt::format_to(out, "{}", id);
         }
       }
-      else {
+      else
+      {
         *out++ = c;
       }
       begin = p;
     }
-    const char* ptr = unnamed_str.release();
-    return fmt::string_view(ptr, out - ptr);
+    std::string result;
+    result.reserve(size_unnamed_str);
+    std::string_view ptr_span(unnamed_str.get(), size_unnamed_str);
+    std::copy_n(ptr_span.begin(), out - unnamed_str.get(), std::back_inserter(result));
+    return result;
   }
 
-public:
+ public:
   template<typename... Args>
   inline void log(
-    uint32_t& logId, int64_t tsc, const char* location, LogLevel level,
-    fmt::format_string<typename fmtlogdetail::UnrefPtr<fmt::remove_cvref_t<Args>>::type...> format,
-    Args&&... args) noexcept {
-    if (!logId) {
-      auto unnamed_format = unNameFormat<false>(fmt::string_view(format), nullptr, args...);
+      uint32_t& logId,
+      int64_t tsc,
+      const char* location,
+      LogLevel level,
+      fmt::format_string<typename fmtlogdetail::UnrefPtr<fmt::remove_cvref_t<Args>>::type...> format,
+      Args&&... args) noexcept
+  {
+    if (!logId)
+    {
+      fmt::string_view format_str_v = format.get();
+      auto unnamed_format = unNameFormat<false>(std::string{ format_str_v.begin(), format_str_v.end() }, nullptr, args...);
       registerLogInfo(logId, formatTo<Args...>, location, level, unnamed_format);
     }
     constexpr size_t num_cstring = fmt::detail::count<isCstring<Args>()...>();
     size_t cstringSizes[std::max(num_cstring, (size_t)1)];
     uint32_t alloc_size = 8 + (uint32_t)getArgSizes<0>(cstringSizes, args...);
     bool q_full_cb = true;
-    do {
-      if (auto header = allocMsg(alloc_size, q_full_cb)) {
+    do
+    {
+      if (auto header = allocMsg(alloc_size, q_full_cb))
+      {
         header->logId = logId;
         char* out = (char*)(header + 1);
         *(int64_t*)out = tsc;
@@ -696,15 +829,17 @@ public:
   }
 
   template<typename... Args>
-  inline void logOnce(const char* location, LogLevel level, fmt::format_string<Args...> format,
-                      Args&&... args) {
+  inline void logOnce(const char* location, LogLevel level, fmt::format_string<Args...> format, Args&&... args)
+  {
     fmt::string_view sv(format);
     auto&& fmt_args = fmt::make_format_args(args...);
     uint32_t fmt_size = formatted_size(sv, fmt_args);
     uint32_t alloc_size = 8 + 8 + fmt_size;
     bool q_full_cb = true;
-    do {
-      if (auto header = allocMsg(alloc_size, q_full_cb)) {
+    do
+    {
+      if (auto header = allocMsg(alloc_size, q_full_cb))
+      {
         header->logId = (uint32_t)level;
         char* out = (char*)(header + 1);
         *(int64_t*)out = tscns.rdtsc();
@@ -727,23 +862,28 @@ FAST_THREAD_LOCAL typename fmtlogT<_>::ThreadBuffer* fmtlogT<_>::threadBuffer;
 
 template<int __ = 0>
 struct fmtlogWrapper
-{ static fmtlog impl; };
+{
+  static fmtlog impl;
+};
 
 template<int _>
 fmtlog fmtlogWrapper<_>::impl;
 
 template<int _>
-inline void fmtlogT<_>::setLogLevel(LogLevel logLevel) noexcept {
+inline void fmtlogT<_>::setLogLevel(LogLevel logLevel) noexcept
+{
   fmtlogWrapper<>::impl.currentLogLevel = logLevel;
 }
 
 template<int _>
-inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() noexcept {
+inline typename fmtlogT<_>::LogLevel fmtlogT<_>::getLogLevel() noexcept
+{
   return fmtlogWrapper<>::impl.currentLogLevel;
 }
 
 template<int _>
-inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) noexcept {
+inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) noexcept
+{
 #ifdef FMTLOG_NO_CHECK_LEVEL
   return true;
 #else
@@ -751,76 +891,80 @@ inline bool fmtlogT<_>::checkLogLevel(LogLevel logLevel) noexcept {
 #endif
 }
 
-#define __FMTLOG_S1(x) #x
-#define __FMTLOG_S2(x) __FMTLOG_S1(x)
+#define __FMTLOG_S1(x)    #x
+#define __FMTLOG_S2(x)    __FMTLOG_S1(x)
 #define __FMTLOG_LOCATION __FILE__ ":" __FMTLOG_S2(__LINE__)
 
-#define FMTLOG(level, format, ...)                                                                 \
-  do {                                                                                             \
-    static uint32_t logId = 0;                                                                     \
-    if (!fmtlog::checkLogLevel(level)) break;                                                      \
-    fmtlogWrapper<>::impl.log(logId, fmtlogWrapper<>::impl.tscns.rdtsc(), __FMTLOG_LOCATION,       \
-                              level, format, ##__VA_ARGS__);                                       \
+#define FMTLOG(level, format, ...)                                                                                          \
+  do                                                                                                                        \
+  {                                                                                                                         \
+    static uint32_t logId = 0;                                                                                              \
+    if (!fmtlog::checkLogLevel(level))                                                                                      \
+      break;                                                                                                                \
+    fmtlogWrapper<>::impl.log(logId, fmtlogWrapper<>::impl.tscns.rdtsc(), __FMTLOG_LOCATION, level, format, ##__VA_ARGS__); \
   } while (0)
 
-#define FMTLOG_LIMIT(min_interval, level, format, ...)                                             \
-  do {                                                                                             \
-    static uint32_t logId = 0;                                                                     \
-    static int64_t limitNs = 0;                                                                    \
-    if (!fmtlog::checkLogLevel(level)) break;                                                      \
-    int64_t tsc = fmtlogWrapper<>::impl.tscns.rdtsc();                                             \
-    int64_t ns = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);                                          \
-    if (ns < limitNs) break;                                                                       \
-    limitNs = ns + min_interval;                                                                   \
-    fmtlogWrapper<>::impl.log(logId, tsc, __FMTLOG_LOCATION, level, format, ##__VA_ARGS__);        \
+#define FMTLOG_LIMIT(min_interval, level, format, ...)                                      \
+  do                                                                                        \
+  {                                                                                         \
+    static uint32_t logId = 0;                                                              \
+    static int64_t limitNs = 0;                                                             \
+    if (!fmtlog::checkLogLevel(level))                                                      \
+      break;                                                                                \
+    int64_t tsc = fmtlogWrapper<>::impl.tscns.rdtsc();                                      \
+    int64_t ns = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);                                   \
+    if (ns < limitNs)                                                                       \
+      break;                                                                                \
+    limitNs = ns + min_interval;                                                            \
+    fmtlogWrapper<>::impl.log(logId, tsc, __FMTLOG_LOCATION, level, format, ##__VA_ARGS__); \
   } while (0)
 
-#define FMTLOG_ONCE(level, format, ...)                                                            \
-  do {                                                                                             \
-    if (!fmtlog::checkLogLevel(level)) break;                                                      \
-    fmtlogWrapper<>::impl.logOnce(__FMTLOG_LOCATION, level, format, ##__VA_ARGS__);                \
+#define FMTLOG_ONCE(level, format, ...)                                             \
+  do                                                                                \
+  {                                                                                 \
+    if (!fmtlog::checkLogLevel(level))                                              \
+      break;                                                                        \
+    fmtlogWrapper<>::impl.logOnce(__FMTLOG_LOCATION, level, format, ##__VA_ARGS__); \
   } while (0)
 
 #if FMTLOG_ACTIVE_LEVEL <= FMTLOG_LEVEL_DBG
-#define logd(format, ...) FMTLOG(fmtlog::DBG, format, ##__VA_ARGS__)
-#define logdo(format, ...) FMTLOG_ONCE(fmtlog::DBG, format, ##__VA_ARGS__)
+#define logd(format, ...)                FMTLOG(fmtlog::DBG, format, ##__VA_ARGS__)
+#define logdo(format, ...)               FMTLOG_ONCE(fmtlog::DBG, format, ##__VA_ARGS__)
 #define logdl(min_interval, format, ...) FMTLOG_LIMIT(min_interval, fmtlog::DBG, format, ##__VA_ARGS__)
 #else
-#define logd(format, ...) (void)0
-#define logdo(format, ...) (void)0
+#define logd(format, ...)                (void)0
+#define logdo(format, ...)               (void)0
 #define logdl(min_interval, format, ...) (void)0
 #endif
 
 #if FMTLOG_ACTIVE_LEVEL <= FMTLOG_LEVEL_INF
-#define logi(format, ...) FMTLOG(fmtlog::INF, format, ##__VA_ARGS__)
-#define logio(format, ...) FMTLOG_ONCE(fmtlog::INF, format, ##__VA_ARGS__)
+#define logi(format, ...)                FMTLOG(fmtlog::INF, format, ##__VA_ARGS__)
+#define logio(format, ...)               FMTLOG_ONCE(fmtlog::INF, format, ##__VA_ARGS__)
 #define logil(min_interval, format, ...) FMTLOG_LIMIT(min_interval, fmtlog::INF, format, ##__VA_ARGS__)
 #else
-#define logi(format, ...) (void)0
-#define logio(format, ...) (void)0
+#define logi(format, ...)                (void)0
+#define logio(format, ...)               (void)0
 #define logil(min_interval, format, ...) (void)0
 #endif
 
 #if FMTLOG_ACTIVE_LEVEL <= FMTLOG_LEVEL_WRN
-#define logw(format, ...) FMTLOG(fmtlog::WRN, format, ##__VA_ARGS__)
-#define logwo(format, ...) FMTLOG_ONCE(fmtlog::WRN, format, ##__VA_ARGS__)
+#define logw(format, ...)                FMTLOG(fmtlog::WRN, format, ##__VA_ARGS__)
+#define logwo(format, ...)               FMTLOG_ONCE(fmtlog::WRN, format, ##__VA_ARGS__)
 #define logwl(min_interval, format, ...) FMTLOG_LIMIT(min_interval, fmtlog::WRN, format, ##__VA_ARGS__)
 #else
-#define logw(format, ...) (void)0
-#define logwo(format, ...) (void)0
+#define logw(format, ...)                (void)0
+#define logwo(format, ...)               (void)0
 #define logwl(min_interval, format, ...) (void)0
 #endif
 
 #if FMTLOG_ACTIVE_LEVEL <= FMTLOG_LEVEL_ERR
-#define loge(format, ...) FMTLOG(fmtlog::ERR, format, ##__VA_ARGS__)
-#define logeo(format, ...) FMTLOG_ONCE(fmtlog::ERR, format, ##__VA_ARGS__)
+#define loge(format, ...)                FMTLOG(fmtlog::ERR, format, ##__VA_ARGS__)
+#define logeo(format, ...)               FMTLOG_ONCE(fmtlog::ERR, format, ##__VA_ARGS__)
 #define logel(min_interval, format, ...) FMTLOG_LIMIT(min_interval, fmtlog::ERR, format, ##__VA_ARGS__)
 #else
-#define loge(format, ...) (void)0
-#define logeo(format, ...) (void)0
+#define loge(format, ...)                (void)0
+#define logeo(format, ...)               (void)0
 #define logel(min_interval, format, ...) (void)0
 #endif
 
-#ifdef FMTLOG_HEADER_ONLY
-#include "fmtlog-inl.h"
-#endif
+#include "fmtlog/internal/fmtlog-inl.h"

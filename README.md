@@ -1,9 +1,37 @@
+Ubuntu latest: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Ubuntu/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+MacOS: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/MacOS/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+MSVC Windows:[![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Windows/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+Are clang-format and cmake-format used everywhere: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Style/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+Is installable if dependencies are installed on system: [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Install/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+Is installable if dependencies are downloaded at configure time via CPM_DOWNLOAD_ALL=1 : [![Actions Status](https://github.com/Arniiiii/fmtlog_cmake_fix/workflows/Install_CPM_DOWNLOAD_ALL/badge.svg)](https://github.com/Arniiiii/fmtlog_cmake_fix/actions)
+
+
+# Important
+
+I ( Arniiiii ) don't like the code from the project.
+I won't use the log library again.
+
+Why:
+ - It has 324 warnings just from tests.
+ - The code uses `reinterpret_cast` like cast via C to get access to private members of some fmt classes
+ - It had a memory leak which I tried to fix. Now it requires `fmtlog::poll()` every time to get it write to at an output. 
+ - A test at Windows with MSVC just runs forever and I don't know why.
+
+# What you can use instead?
+
+On Quill's README there are some benchmark results for some log libraries you may want, so I will choose an another o    ne.
+
 # fmtlog
-fmtlog is a performant asynchronous logging library using [fmt](https://github.com/fmtlib/fmt) library format.
+fmtlog is a performant asynchronous header-only logging library using [fmt](https://github.com/fmtlib/fmt) library format.
 
 ## Features
 * Faster - lower runtime latency than [NanoLog](https://github.com/PlatformLab/NanoLog) and higher throughput than [spdlog](https://github.com/gabime/spdlog) (see [Performance](https://github.com/MengRao/fmtlog#Performance) below).
-* Headers only or compiled
+* Headers only
 * Feature rich formatting on top of excellent fmt library.
 * Asynchronous multi-threaded logging **in time order** and can also be used synchronously in single thread.
 * Custom formatting
@@ -12,25 +40,45 @@ fmtlog is a performant asynchronous logging library using [fmt](https://github.c
 * Log frequency limitation - specific logs can be set a minimum logging interval.
 
 ## Platforms
-* Linux (GCC 10.2 tested)
+* Linux (GCC 10.2,14.0 ; Clang 16.0.6 tested)
 * Windows (MSVC 2019 tested)
 
 ## Install
 C++17 is required, and fmtlog is dependent on [fmtlib](https://github.com/fmtlib/fmt), you need to install fmtlib first if you haven't.
-#### Header only version
-Just copy `fmtlog.h` and `fmtlog-inl.h` to your project, and:
-* Either define macro `FMTLOG_HEADER_ONLY` before including fmtlog.h.
-* Or include `fmtlog-inl.h` in one of your source files.
-
-#### Static/Shared lib version built by CMake
-```console
-$ git clone https://github.com/MengRao/fmtlog.git
-$ cd fmtlog
-$ git submodule init
-$ git submodule update
-$ ./build.sh
+#### Add headers manually
+Just copy `include/fmtlog/fmtlog.h` and `include/fmtlog/internal/fmtlog-inl.h` to your project and somehow link `fmtlib`.
+### CMake
+If you are using CMake, there's some options to add library, and some options to link fmtlib  
+#### How to add library?  
+##### Use add_subdirectory somehow and link fmtlib somehow 
+###### CPM aka CMake's missing package manager  
+Put somewhere next code (obviously after adding [CPM](https://github.com/cpm-cmake/CPM.cmake) itself ):
 ```
-Then copy `fmtlog.h` and `libfmtlog-static.a`/`libfmtlog-shared.so` generated in `.build` dir.
+CPMAddPackage(
+    NAME fmtlog 
+    GIT_REPOSITORY "https://github.com/Arniiiii/fmtlog_cmake_fix.git"
+    TAG master
+)
+
+target_link_libraries(<your_target_name> [PRIVATE/PUBLIC/INTERFACE] fmtlog::fmtlog)
+```
+###### Through a submodule
+We do **not** recommend do that. Use CPM instead.  
+###### Have it somewhere at your repo  
+We do **not** recommend do that. Use CPM instead. 
+
+#### How to link fmtlib?  
+
+- Through the fmtlog library  
+- Just link fmtlib with your target additionally ( do it yourself )  
+##### How to link fmtlib through fmtlog library?
+There's next options:  
+
++ if you want to use system's fmt: add `CPM_USE_LOCAL_PACKAGES ON` or add `CPM_LOCAL_PACKAGES_ONLY ON`  
++ if you want to download the fmtlib and everything that you can have from CPM  and compile all of it yourself everytime (consider installing `ccache`), add nothing or add `CPM_DOWNLOAD_ALL ON` .  
+
+## CMake options  
+Check them at `cmake/StandardSettings.cmake`  .
 
 ## Usage
 ```c++

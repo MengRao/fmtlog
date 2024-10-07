@@ -1,3 +1,11 @@
-.build
-out
-CMakeSettings.json
+/build*
+/.vscode
+/cpm_modules
+.DS_Store
+/.cache
+build/
+cmake_build*/
+.cache/
+install_dir/
+compile_commands.json
+
