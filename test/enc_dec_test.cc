@@ -42,15 +42,14 @@ template<>
 struct fmt::formatter<MovableType> : formatter<int>
 {
   // parse is inherited from formatter<string_view>.
-  template<typename FormatContext>
-  auto format(const MovableType& val, FormatContext& ctx) {
+  // template<typename FormatContext>
+  auto format(const MovableType& val, format_context& ctx) const {
     return formatter<int>::format(val.val[0].v, ctx);
   }
 };
 
 template<typename S, typename... Args>
 void test(const S& format, Args&&... args) {
-  fmt::detail::check_format_string<Args...>(format);
   auto sv = fmt::string_view(format);
   size_t formatted_size = fmt::formatted_size(fmt::runtime(sv), std::forward<Args>(args)...);
   string ans = fmt::format(fmt::runtime(sv), std::forward<Args>(args)...);
