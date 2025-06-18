@@ -28,4 +28,7 @@ endif()
 install(TARGETS fmtlog-static)
 
 add_subdirectory(fmt)
-add_subdirectory(test)
+option(BUILD_TESTS_FMTLOG "Enable building tests" ON)
+if(BUILD_TESTS_FMTLOG)
+    add_subdirectory(test)
+endif()
