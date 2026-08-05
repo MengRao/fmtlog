@@ -528,10 +528,10 @@ public:
       fmt::string_view v(in, size);
       if constexpr (ValueOnly) {
         fmt::detail::value<Context>& value_ = *(fmt::detail::value<Context>*)(args + Idx);
-        value_ = v;
+        value_ = fmt::detail::value<Context>(v);
       }
       else {
-        args[Idx] = v;
+        args[Idx] = fmt::basic_format_arg<Context>(v);
       }
       return decodeArgs<ValueOnly, Idx + 1, DestructIdx, Args...>(in + size + 1, args,
                                                                   destruct_args);
@@ -540,18 +540,18 @@ public:
       if constexpr (ValueOnly) {
         fmt::detail::value<Context>& value_ = *(fmt::detail::value<Context>*)(args + Idx);
         if constexpr (UnrefPtr<ArgType>::value) {
-          value_ = **(ArgType*)in;
+          value_ = fmt::detail::value<Context>(**(ArgType*)in);
         }
         else {
-          value_ = *(ArgType*)in;
+          value_ = fmt::detail::value<Context>(*(ArgType*)in);
         }
       }
       else {
         if constexpr (UnrefPtr<ArgType>::value) {
-          args[Idx] = **(ArgType*)in;
+          args[Idx] = fmt::basic_format_arg<Context>(**(ArgType*)in);
         }
         else {
-          args[Idx] = *(ArgType*)in;
+          args[Idx] = fmt::basic_format_arg<Context>(*(ArgType*)in);
         }
       }
 
