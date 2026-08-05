@@ -303,13 +303,13 @@ public:
 
   template<size_t I, typename T>
   inline void setArg(const T& arg) {
-    args[reorderIdx[I]] = arg;
+    args[reorderIdx[I]] = fmt::basic_format_arg<fmtlog::Context>(arg);
   }
 
   template<size_t I, typename T>
   inline void setArgVal(const T& arg) {
     fmt::detail::value<fmtlog::Context>& value_ = *(fmt::detail::value<fmtlog::Context>*)&args[reorderIdx[I]];
-    value_ = arg;
+    value_ = fmt::detail::value<fmtlog::Context>(arg);
   }
 
   void flushLogFile() {
