@@ -360,8 +360,17 @@ public:
     int64_t tsc = *(int64_t*)data;
     data += 8;
     if (!info.formatToFn) { // log once
-      info.location = *(const char**)data;
+      // logId 0-3 select the logOnce placeholders, whose payload is [tsc][location][text].
+      // A shorter message, or a null location, means this is not a logOnce message at all
+      // -- drop it instead of dereferencing it. Note that the logId >= bgLogInfos.size()
+      // check in poll() is an upper bound only: 0 is a valid index, so a message whose
+      // logId field was never written lands here. A bug in the logger should not be able
+      // to take the process down.
+      if (end - data < (ptrdiff_t)sizeof(const char*)) return;
+      const char* location = *(const char**)data;
       data += 8;
+      if (!location) return;
+      info.location = location;
       info.processLocation();
     }
     int64_t ts = fmtlogWrapper<>::impl.tscns.tsc2ns(tsc);

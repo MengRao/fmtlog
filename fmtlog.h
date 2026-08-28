@@ -177,7 +177,16 @@ public:
   public:
     struct MsgHeader
     {
-      inline void push(uint32_t sz) { *(volatile uint32_t*)&size = sz + sizeof(MsgHeader); }
+      inline void push(uint32_t sz) {
+        // The consumer treats a non-zero `size` as "this message is complete", so every
+        // store to logId and to the payload must be visible before this one. `volatile`
+        // orders volatile accesses against each other only -- it does not order plain
+        // stores, and gcc >= 13 does sink them past this store (observed: the `logId`
+        // store scheduled after this one, publishing a message whose logId was still 0,
+        // which selects a logOnce placeholder with a null location -> strlen(nullptr)).
+        std::atomic_thread_fence(std::memory_order_release);
+        *(volatile uint32_t*)&size = sz + sizeof(MsgHeader);
+      }
 
       uint32_t size;
       uint32_t logId;
@@ -195,7 +204,10 @@ public:
           free_write_cnt = BLK_CNT - write_idx;
           if (blk_sz >= free_write_cnt && read_idx_cache != 0) { // wrap around
             blk[0].size = 0;
-            blk[write_idx].size = 1;
+            // The consumer follows this marker straight to blk[0], so the store
+            // clearing blk[0].size must be visible before the marker itself.
+            std::atomic_thread_fence(std::memory_order_release);
+            *(volatile uint32_t*)&blk[write_idx].size = 1;
             write_idx = 0;
             free_write_cnt = read_idx_cache;
           }
@@ -215,12 +227,15 @@ public:
     }
 
     inline const MsgHeader* front() {
-      uint32_t size = blk[read_idx].size;
+      uint32_t size = *(volatile uint32_t*)&blk[read_idx].size;
       if (size == 1) { // wrap around
         read_idx = 0;
-        size = blk[0].size;
+        size = *(volatile uint32_t*)&blk[0].size;
       }
       if (size == 0) return nullptr;
+      // Pairs with the release fence in push(): everything the producer wrote before
+      // publishing must be visible before we read it.
+      std::atomic_thread_fence(std::memory_order_acquire);
       return &blk[read_idx];
     }
 
