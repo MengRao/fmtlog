@@ -204,7 +204,10 @@ public:
           free_write_cnt = BLK_CNT - write_idx;
           if (blk_sz >= free_write_cnt && read_idx_cache != 0) { // wrap around
             blk[0].size = 0;
-            blk[write_idx].size = 1;
+            // The consumer follows this marker straight to blk[0], so the store
+            // clearing blk[0].size must be visible before the marker itself.
+            std::atomic_thread_fence(std::memory_order_release);
+            *(volatile uint32_t*)&blk[write_idx].size = 1;
             write_idx = 0;
             free_write_cnt = read_idx_cache;
           }
